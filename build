@@ -1,0 +1,8 @@
+show time > timefile1
+execute def
+execute mod
+copy compile.rez obj
+cd obj
+execute l2bw
+copy m2c 16/modula2
+show time > timefile2

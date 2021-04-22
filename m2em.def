@@ -1,0 +1,41 @@
+DEFINITION MODULE M2EM;  (* NW 19.5.83; HS 20.5.85 / 31.5.86 *)
+
+  FROM M2DM IMPORT ObjPtr, ParPtr, Standard, aAdr;
+  FROM M2HM IMPORT Item;
+  FROM M2SM IMPORT Symbol;
+
+CONST
+  wtabmax        =  4;
+  ParamStartAdr  =  9; (* is: return address  ( 3 bytes ) +
+                              stack frame ptr ( 2 bytes ) +
+                              access link     ( 2 bytes ) +
+                              direct page reg ( 2 bytes ) *)
+
+VAR
+  wlev:             CARDINAL;  (* WITH nesting level *)
+
+  PROCEDURE AllocVar(obj: ObjPtr; VAR adr: aAdr);
+  PROCEDURE AllocPar(par: ParPtr; VAR adr: aAdr);
+  PROCEDURE AllocFld(obj: ObjPtr; VAR adr: aAdr);
+
+  PROCEDURE GenItem    (VAR x: Item; y, scope: ObjPtr);
+  PROCEDURE GenIndex   (VAR x, y: Item);                (* x := x[y]     *)
+  PROCEDURE GenField   (VAR x: Item; f: ObjPtr);        (* x := x.f      *)
+  PROCEDURE GenDeRef   (VAR x: Item);                   (* x := x^       *)
+  PROCEDURE GenNeg     (VAR x: Item);                   (* x := -x       *)
+  PROCEDURE GenNot     (VAR x: Item);                   (* x := ~x       *)
+  PROCEDURE GenAnd     (VAR x: Item);
+  PROCEDURE GenOr      (VAR x: Item);
+  PROCEDURE GenSingSet (VAR x, e: Item);                (* x := {e}      *)
+  PROCEDURE GenSet     (VAR x, e1, e2: Item);           (* x := {e1..e2} *)
+  PROCEDURE GenIn      (VAR x, y: Item);                (* x := x IN y   *)
+  PROCEDURE GenOp      (op: Symbol; VAR x, y: Item);    (* x := x op y   *)
+  PROCEDURE GenWith    (VAR x: Item; VAR adr: aAdr); (* x := WITH x   *)
+  PROCEDURE GenWith2;
+  PROCEDURE GenStParam (VAR p, x: Item; fctno: Standard;
+                        parno: CARDINAL; morepar: BOOLEAN);
+  PROCEDURE GenStFct   (fctno: Standard; parno: CARDINAL);
+  PROCEDURE InitM2EM;
+
+END M2EM.
+

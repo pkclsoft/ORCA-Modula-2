@@ -1,0 +1,288 @@
+DEFINITION MODULE M2OMF;
+
+(*
+  M2OMF.
+
+  This module provides a way of creating an OMF file as the end result of a
+  compile.  Note that at the time of writing, it was written to support v2.1
+  of OMF.
+
+  The OMF file is created wholly in memory. The module does not write the file
+  out to disk unless explicitly told to do so by a call to FlushToDisk.
+
+  Note that this module does a lot of memory allocation and deallocation.  It
+  does NOT use the standard libraries to do this, as they are not 
+  comprehensive enough.  We need to be able to extend a block as we need more
+  space.  Only the GS Memory Manager provides this sort of functionality, so
+  direct calls to the MM are used.
+*)
+
+FROM MemoryManager IMPORT Handle;
+FROM SYSTEM IMPORT ADDRESS, BYTE, WORD;
+
+TYPE
+  aSegmentAttribute = (nul0, nul1, nul2, nul3, nul4, nul5, nul6, nul7,
+                       atBankRelative, atSkipSegment, atReloadSegment,
+                       atAbsoluteBank, atNoSpecialMemory, atPosIndependant,
+                       atPrivate, atDynamic);
+  aSegmentAttributeSet = SET OF aSegmentAttribute;
+
+  aSegmentKind = (skCode, skData, skJumpTable, skNul3, skPathname, skNul5,
+                  skNul6, skNul7, skLibraryDictionary, skNul9, skNul10,
+                  skNul11, skNul12, skNul13, skNul14, skNul15, 
+                  skInitialisation, skNul17, skDirectPage);
+
+  pByte =
+    RECORD
+      CASE :CARDINAL OF
+        0:  a:  ADDRESS;
+      | 1:  b:  POINTER TO BYTE;
+      | 2:  c:  POINTER TO CHAR;
+      END;
+    END;
+
+  aSegmentHeader =
+    RECORD
+      BYTECNT:    LONGCARD; (* Length of this segment (including header) in bytes *)
+      RESSPC:     LONGCARD; (* Number of bytes of space to reserve after segment content *)
+      LENGTH:     LONGCARD; (* Amount of memory required by segment *)
+      undefined:  BYTE;     (* reserved by Apple for future use *)
+      LABLEN:     BYTE;     (* number of bytes used by each label *)
+      NUMLEN:     BYTE;     (* number of bytes used by a number. MUST be 4 *)
+      VERSION:    BYTE;     (* OMF version number.  Should be 2 *)
+      BANKSIZE:   LONGCARD; (* max size of a segment. MUST be $10000 for code segments *)
+
+      CASE :BOOLEAN OF
+        TRUE:   attributes: aSegmentAttributeSet; (* attributes of segment, bits 8 thru 15 *)
+        |
+        FALSE:  KIND:       CARDINAL; (* segment kind, bits 0 thru 7 *)
+      END;
+
+      undefined2: CARDINAL; (* reserved by Apple for future use *)
+      ORG:        ADDRESS;  (* absolute long address of the segment *)
+      ALIGN:      LONGCARD; (* alignment of segment, $0, $100 or $10000 are legal *)
+      NUMSEX:     BYTE;     (* byte order, MUST be 0 *)
+      REVISION:   BYTE;     (* OMF revision number.  Should be 1 *)
+      SEGNUM:     CARDINAL; (* actual segment number *)
+      ENTRY:      LONGCARD; (* offset into segment that is the entry point *)
+      DISPNAME:   CARDINAL; (* displacement of the LOADNAME field *)
+      DISPDATA:   CARDINAL; (* displacement of the segment data *)
+      tempORG:    LONGCARD; (* temporary origin of segment *)
+      LOADNAME:   ARRAY [0..9] OF CHAR; (* name of load segment *)
+    END;
+  pSegmentHeader = POINTER TO aSegmentHeader;
+
+  aOMFFileID =
+    RECORD
+      open:           BOOLEAN;        (* the file is open *)
+      fileName:       ARRAY [0..79] OF CHAR; (* the file name *)
+      handle:         Handle;        (* the handle of the memory used by the file *)
+      size:           LONGCARD;       (* the size in bytes of the file *)
+      lastByte:       ADDRESS;        (* the last byte available in the file *)
+      segmentName:    ARRAY [0..79] OF CHAR; (* the name of the current segment *)
+      segmentHeader:  pSegmentHeader; (* ptr to the current segment header *)
+      segmentData:    ADDRESS;        (* address of first data byte of current segment *)
+      nextByte:       pByte;          (* address of next byte to be wrtten to *)
+    END;
+
+  aDisplacement = LONGCARD;
+
+VAR
+  objFile:  aOMFFileID;
+
+PROCEDURE CloseOMFFile(discardFile: BOOLEAN;
+                       saveToDisk:  BOOLEAN);
+(*
+  OPERATION:
+    This procedure closes the 'file' if it is open.
+
+    If discardFile is TRUE, then it simply disposes of any memory taken up
+    by the file.
+
+    If discardFile is FALSE, then saveToDisk is checked.  If TRUE, the memory
+    file is written to disk.  Finally, the 'file' is given to FastFile, which
+    leaves the file in memory, but removes it from our care.
+*)
+
+PROCEDURE DisposeOMFFile;
+(*
+  OPERATION:
+    Dispose of any memory taken up by the 'file'.  This would normaly only
+    be done if a compile error had occured.
+*)
+
+PROCEDURE EndSegment(kind:  aSegmentKind; attr: aSegmentAttributeSet);
+(*
+  OPERATION:
+    This procedure completes the current segment within the file by updating 
+    the header accordingly.
+*)
+
+PROCEDURE FixLabel(labelNumber: CARDINAL);
+(*
+  OPERATION:
+    This procedure is called when it is time to define the actual location of
+    a label.  If there are any prior references to the label, then they are
+    back-patched accordingly.
+*)
+
+PROCEDURE GenData(label:    ARRAY OF CHAR;
+                  value:    ADDRESS;
+                  length:   LONGCARD;
+                  private:  BOOLEAN);
+(*
+  OPERATION:
+    This procedure will generate a label, and associated data.  
+
+    'label' is the textual label associated with the data.
+    'value' contains the address of the first byte of the data.
+    'length' is the number of bytes of data.
+    'private' specifies whether to generate the label as being a private label.
+*)
+
+PROCEDURE GenDS(label:    ARRAY OF CHAR;
+                length:   LONGCARD;
+                private:  BOOLEAN);
+(*
+  OPERATION:
+    This procedure generates a label, and reserves 'length' bytes of space in
+    the form:
+
+      label DS length
+
+    The 'private' parameter specifies whether to generate the label as being
+    a private label.
+*)
+
+PROCEDURE GenGlobalOp(instruction:  CARDINAL;
+                      label:        ARRAY OF CHAR;
+                      offset:       INTEGER;
+                      shift:        INTEGER;
+                      width:        CARDINAL);
+(*
+  OPERATION:
+    This procedure will generate the OMF equivalent of an instruction.  The 
+    operand for the instruction is a label as defined by 'label'.  An
+    optional offset to that label is supplied in 'offset'.  'width' defines 
+    the number of bytes to be generated as a result of the expression. 'shift'
+    indicates that the result of the addition of the label and offset should
+    be shifted.
+*)
+
+PROCEDURE GenLocalOp(instruction: CARDINAL;
+                     labelNumber: CARDINAL;
+                     relative:    BOOLEAN;
+                     offset:      INTEGER;
+                     shift:       BOOLEAN;
+                     width:       CARDINAL);
+(*
+  OPERATION:
+    This procedure will generate the OMF equivalent of an instruction.  The 
+    operand for the instruction is a label as defined by 'labelNumber'.  An
+    optional offset to that label is supplied in 'offset'.  If 'relative' is
+    TRUE, then the operand is generated as a relative expression. 'width'
+    defines the number of bytes to be generated as a result of the expression.
+    'shift', if TRUE indicates that the operand should be shifted right 16
+    bits.
+*)
+
+PROCEDURE IncrementSegmentLength(bytes: LONGCARD);
+(*
+  OPERATION:
+    Increments the length of the current segment by 'bytes'.
+*)
+
+PROCEDURE LabelDisplacement(labelNumber: CARDINAL): aDisplacement;
+(*
+  OPERATION:
+    Returns the number of bytes between the current location within the current
+    segment, and the label specified by 'labelNumber'.
+*)
+
+PROCEDURE NewLabel(VAR labelNumber: CARDINAL);
+(*
+  OPERATION:
+    This procedure returns the number of a new label.  It assumes that the 
+    label table has been initialised properly using 'InitialiseLabels' by 
+    not doing any initialisation itself.
+*)
+
+PROCEDURE NewSegmentHeader(name:    ARRAY OF CHAR);
+(*
+  OPERATION:
+    This procedure will allocate a new segment header, and initialise it to be
+    a static code segment.  The value of the "name" parameter is placed after
+    the header, and it's length is used to determine the actual size of the
+    header.
+
+    Any fields that have a value defined by Apple are filled in.
+*)
+
+PROCEDURE OpenNewOMFFile(name: ARRAY OF CHAR);
+(*
+  OPERATION:
+    Allocate the initial chunk of memory for the file, and initialise the 
+    OMFFileID accordingly.
+*)
+
+PROCEDURE PutByte(byte: BYTE);
+(*
+  OPERATION:
+    Insert one byte into the file.
+*)
+
+PROCEDURE PutByteConstant(byte: BYTE);
+(*
+  OPERATION:
+    Place a byte constant in the constant buffer.
+*)
+
+PROCEDURE PutLabelText(label: ARRAY OF CHAR);
+(*
+  OPERATION:
+    Inserts the supplied label into the file, preceded by a length byte.
+
+    Note that this procedure does NOT use PutByte to insert each byte, for
+    performance reasons.
+*)
+
+PROCEDURE PutLong(long: LONGINT);
+(*
+  OPERATION:
+    Insert four bytes into the file.
+*)
+
+PROCEDURE PutLongConstant(long: LONGINT);
+(*
+  OPERATION:
+    Insert four bytes into the constant buffer.
+*)
+
+PROCEDURE PutWord(word: WORD);
+(*
+  OPERATION:
+    Insert two bytes into the file.
+*)
+
+PROCEDURE PutWordConstant(word: WORD);
+(*
+  OPERATION:
+    Insert two bytes in the constant buffer.
+*)
+
+PROCEDURE ReferenceLabel(labelNumber: CARDINAL);
+(*
+  OPERATION:
+    This procedure generates a reference to the specified label.  The reference
+    is 'inserted' at the current position in the 'file'.  This means that:
+
+    o   If the label hasn't been defined, then a label reference record is 
+        created, that refers to the next byte in the file.
+
+    o   If the label has been defined, then it's location is inserted starting
+        at the next byte in the file.
+
+    Both cases result in four bytes being allocated in the file.
+*)
+
+END M2OMF.

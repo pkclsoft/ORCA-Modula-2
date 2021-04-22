@@ -1,0 +1,734 @@
+#include "Types.rez"
+
+/*
+  Modula M2 compiler error codes and restrictions
+*/
+
+/* Syntax errors */
+
+resource rCString(8192+10, nospecialmemory) {
+  "identifier expected"
+};
+
+resource rCString(8192+11, nospecialmemory) {
+  "',' comma expected"
+};
+
+resource rCString(8192+12, nospecialmemory) {
+  "';' semicolon expected"
+};
+
+resource rCString(8192+13, nospecialmemory) {
+  "':' colon expected"
+};
+
+resource rCString(8192+14, nospecialmemory) {
+  "'.' period expected"
+};
+
+resource rCString(8192+15, nospecialmemory) {
+  "')' right parenthesis expected"
+};
+
+resource rCString(8192+16, nospecialmemory) {
+  "']' right bracket expected"
+};
+
+resource rCString(8192+17, nospecialmemory) {
+  "'}' right brace expected"
+};
+
+resource rCString(8192+18, nospecialmemory) {
+  "'=' equal sign expected"
+};
+
+resource rCString(8192+19, nospecialmemory) {
+  "':=' assignment expected"
+};
+
+resource rCString(8192+20, nospecialmemory) {
+  "END expected"
+};
+
+resource rCString(8192+21, nospecialmemory) {
+  "'..' ellipsis expected"
+};
+
+resource rCString(8192+22, nospecialmemory) {
+  "'(' left parenthesis expected"
+};
+
+resource rCString(8192+23, nospecialmemory) {
+  "OF expected"
+};
+
+resource rCString(8192+24, nospecialmemory) {
+  "TO expected"
+};
+
+resource rCString(8192+25, nospecialmemory) {
+  "DO expected"
+};
+
+resource rCString(8192+26, nospecialmemory) {
+  "UNTIL expected"
+};
+
+resource rCString(8192+27, nospecialmemory) {
+  "THEN expected"
+};
+
+resource rCString(8192+28, nospecialmemory) {
+  "MODULE expected"
+};
+
+resource rCString(8192+29, nospecialmemory) {
+  "illegal digit, or number too large"
+};
+
+resource rCString(8192+30, nospecialmemory) {
+  "IMPORT expected"
+};
+
+resource rCString(8192+31, nospecialmemory) {
+  "factor starts with illegal symbol"
+};
+
+resource rCString(8192+32, nospecialmemory) {
+  "identifier, (, or [ expected"
+};
+
+resource rCString(8192+33, nospecialmemory) {
+  "identifier, ARRAY, RECORD, SET, POINTER, PROCEDURE, (, or [ expected"
+};
+
+resource rCString(8192+34, nospecialmemory) {
+  "type followed by illegal symbol"
+};
+
+resource rCString(8192+35, nospecialmemory) {
+  "statement starts with illegal symbol"
+};
+
+resource rCString(8192+36, nospecialmemory) {
+  "declaration followed by illegal symbol"
+};
+
+resource rCString(8192+37, nospecialmemory) {
+  "statement part is not allowed in definition module"
+};
+
+resource rCString(8192+38, nospecialmemory) {
+  "export list not allowed in program module"
+};
+
+resource rCString(8192+39, nospecialmemory) {
+  "EXIT not inside a LOOP statement"
+};
+
+resource rCString(8192+40, nospecialmemory) {
+  "illegal character in number"
+};
+
+resource rCString(8192+41, nospecialmemory) {
+  "number too large"
+};
+
+resource rCString(8192+44, nospecialmemory) {
+  "expression must contain constant operands only"
+};
+
+resource rCString(8192+45, nospecialmemory) {
+  "control character within string"
+};
+
+resource rCString(8192+46, nospecialmemory) {
+  "too many digits (> 30)"
+};
+
+/* Undefined */
+
+resource rCString(8192+50, nospecialmemory) {
+  "identifier not declared or not visible"
+};
+
+/* Class and type errors */
+
+resource rCString(8192+52, nospecialmemory) {
+  "object should be a type"
+};
+
+resource rCString(8192+55, nospecialmemory) {
+  "object should be a module"
+};
+
+resource rCString(8192+57, nospecialmemory) {
+  "type should be a record"
+};
+
+resource rCString(8192+60, nospecialmemory) {
+  "illegal base type of set"
+};
+
+resource rCString(8192+61, nospecialmemory) {
+  "incompatible type of label or of subrange bound"
+};
+
+resource rCString(8192+62, nospecialmemory) {
+  "multiply defined case (label)"
+};
+
+resource rCString(8192+63, nospecialmemory) {
+  "low bound > high bound"
+};
+
+resource rCString(8192+64, nospecialmemory) {
+  "more actual than formal parameters"
+};
+
+resource rCString(8192+65, nospecialmemory) {
+  "fewer actual than formal parameters"
+};
+
+/* 66 - 73 mismatch between parameter lists in def and in impl modules */
+
+resource rCString(8192+66, nospecialmemory) {
+  "more parameters in IMPLEMENTATION than in DEFINITION"
+};
+
+resource rCString(8192+68, nospecialmemory) {
+  "mismatch between VAR specifications"
+};
+
+resource rCString(8192+69, nospecialmemory) {
+  "mismatch between type specifications"
+};
+
+resource rCString(8192+70, nospecialmemory) {
+  "more parameters in DEFINITION than in IMPLEMENTATION"
+};
+
+resource rCString(8192+71, nospecialmemory) {
+  "mismatch between result type specifications"
+};
+
+resource rCString(8192+72, nospecialmemory) {
+  "function in DEFINITION, pure procedure in IMPLEMENTATION"
+};
+
+resource rCString(8192+73, nospecialmemory) {
+  "procedure in DEFINITION has parameters, but not in IMPLEMENTATION"
+};
+
+resource rCString(8192+74, nospecialmemory) {
+  "tool, gsos or forward procedure cannot be declared in definition module"
+};
+
+resource rCString(8192+75, nospecialmemory) {
+  "illegal type of control variable in FOR statement"
+};
+
+resource rCString(8192+76, nospecialmemory) {
+  "procedure call of a function"
+};
+
+resource rCString(8192+77, nospecialmemory) {
+  "identifiers in heading and at end do not match"
+};
+
+resource rCString(8192+80, nospecialmemory) {
+  "unsatisfied export list entry"
+};
+
+resource rCString(8192+81, nospecialmemory) {
+  "illegal type of procedure result"
+};
+
+resource rCString(8192+82, nospecialmemory) {
+  "illegal base type of subrange"
+};
+
+resource rCString(8192+83, nospecialmemory) {
+  "illegal type of case expression"
+};
+
+resource rCString(8192+85, nospecialmemory) {
+  "keys of imported symbol files do not match"
+};
+
+resource rCString(8192+89, nospecialmemory) {
+  "there are procedures without bodies"
+};
+
+/* Implementation restrictions of compiler */
+
+resource rCString(8192+92, nospecialmemory) {
+  "too many cases"
+};
+
+resource rCString(8192+94, nospecialmemory) {
+  "index type of array must be a subrange"
+};
+
+resource rCString(8192+96, nospecialmemory) {
+  "too many global modules"
+};
+
+resource rCString(8192+98, nospecialmemory) {
+  "too many structure elements in definition module"
+};
+
+/* Multiple definition */
+
+resource rCString(8192+100, nospecialmemory) {
+  "multiple definition within the same scope"
+};
+
+/* Class and type incompatibilities */
+
+resource rCString(8192+106, nospecialmemory) {
+  "array has too many (> 65536) elements"
+};
+
+resource rCString(8192+107, nospecialmemory) {
+  "illegal use of module"
+};
+
+resource rCString(8192+108, nospecialmemory) {
+  "constant index out of range"
+};
+
+resource rCString(8192+109, nospecialmemory) {
+  "indexed variable is not an array, or the index has the wrong type"
+};
+
+resource rCString(8192+110, nospecialmemory) {
+  "record selector is not a field identifier"
+};
+
+resource rCString(8192+111, nospecialmemory) {
+  "dereferenced variable is not a pointer"
+};
+
+resource rCString(8192+112, nospecialmemory) {
+  "operand type incompatible with sign inversion"
+};
+
+resource rCString(8192+113, nospecialmemory) {
+  "operand type incompatible with NOT"
+};
+
+resource rCString(8192+114, nospecialmemory) {
+  "x IN y: type(x) # basetype(y)"
+};
+
+resource rCString(8192+115, nospecialmemory) {
+  "type of x cannot be the basetype of a set, or y is not a set"
+};
+
+resource rCString(8192+116, nospecialmemory) {
+  "{a..b}: type of either 'a' or 'b' is not equal to the base type of the set"
+};
+
+resource rCString(8192+117, nospecialmemory) {
+  "incompatible operand types"
+};
+
+resource rCString(8192+118, nospecialmemory) {
+  "operand type incompatible with *"
+};
+
+resource rCString(8192+119, nospecialmemory) {
+  "operand type incompatible with /"
+};
+
+resource rCString(8192+120, nospecialmemory) {
+  "operand type incompatible with DIV"
+};
+
+resource rCString(8192+121, nospecialmemory) {
+  "operand type incompatible with MOD"
+};
+
+resource rCString(8192+122, nospecialmemory) {
+  "operand type incompatible with AND"
+};
+
+resource rCString(8192+123, nospecialmemory) {
+  "operand type incompatible with +"
+};
+
+resource rCString(8192+124, nospecialmemory) {
+  "operand type incompatible with -"
+};
+
+resource rCString(8192+125, nospecialmemory) {
+  "operand type incompatible with OR"
+};
+
+resource rCString(8192+126, nospecialmemory) {
+  "operand type incompatible with relation"
+};
+
+/* 127 - 131 assignment of a procedure P to a variable of procedure type T */
+
+resource rCString(8192+127, nospecialmemory) {
+  "procedure must have level 0"
+};
+
+resource rCString(8192+128, nospecialmemory) {
+  "result type of P does not match that of T"
+};
+
+resource rCString(8192+129, nospecialmemory) {
+  "mismatch of a parameter of P with the formal type list of T"
+};
+
+resource rCString(8192+130, nospecialmemory) {
+  "procedure has fewer parameters than the formal type list"
+};
+
+resource rCString(8192+131, nospecialmemory) {
+  "procedure has more parameters than the formal type list"
+};
+
+resource rCString(8192+132, nospecialmemory) {
+  "assignment of a negative integer to a cardinal variable"
+};
+
+resource rCString(8192+133, nospecialmemory) {
+  "incompatible assignment"
+};
+
+resource rCString(8192+134, nospecialmemory) {
+  "assignment to non-variable"
+};
+
+resource rCString(8192+135, nospecialmemory) {
+  "type of expression in IF, WHILE, UNTIL clause must be BOOLEAN"
+};
+
+resource rCString(8192+136, nospecialmemory) {
+  "call of an object which is not a procedure"
+};
+
+resource rCString(8192+137, nospecialmemory) {
+  "type of VAR parameter is not identical to that of actual parameter"
+};
+
+resource rCString(8192+138, nospecialmemory) {
+  "constant out of legal range"
+};
+
+resource rCString(8192+139, nospecialmemory) {
+  "type of RETURN expression differs from procedure type"
+};
+
+resource rCString(8192+140, nospecialmemory) {
+  "illegal type of CASE expression"
+};
+
+resource rCString(8192+141, nospecialmemory) {
+  "step in FOR clause cannot be 0"
+};
+
+resource rCString(8192+142, nospecialmemory) {
+  "illegal type of control variable"
+};
+
+resource rCString(8192+143, nospecialmemory) {
+  "VAR parameter may not be a constant"
+};
+
+resource rCString(8192+144, nospecialmemory) {
+  "incorrect type of parameter of standard procedure"
+};
+
+resource rCString(8192+145, nospecialmemory) {
+  "this parameter should be a type identifier"
+};
+
+resource rCString(8192+146, nospecialmemory) {
+  "string is too long"
+};
+
+resource rCString(8192+147, nospecialmemory) {
+  "incorrect priority specification"
+};
+
+/* Extra messages for W65C816 Code Generator */
+
+resource rCString(8192+178, nospecialmemory) {
+  "illegal use of register (locked) (compiler error)"
+};
+
+resource rCString(8192+184, nospecialmemory) {
+  "no word registers available (compiler error)"
+};
+
+resource rCString(8192+185, nospecialmemory) {
+  "no long registers available (compiler error)"
+};
+
+resource rCString(8192+186, nospecialmemory) {
+  "no quad registers available (compiler error)"
+};
+
+/* Implementation restrictions of system */
+
+resource rCString(8192+200, nospecialmemory) {
+  "not implemented"
+};
+
+resource rCString(8192+201, nospecialmemory) {
+  "integer too small for sign inversion"
+};
+
+resource rCString(8192+202, nospecialmemory) {
+  "set element outside valid range"
+};
+
+resource rCString(8192+203, nospecialmemory) {
+  "overflow in multiplication"
+};
+
+resource rCString(8192+204, nospecialmemory) {
+  "overflow in division"
+};
+
+resource rCString(8192+205, nospecialmemory) {
+  "division by zero, or modulus with negative value"
+};
+
+resource rCString(8192+206, nospecialmemory) {
+  "overflow in addition"
+};
+
+resource rCString(8192+207, nospecialmemory) {
+  "overflow in subtraction"
+};
+
+resource rCString(8192+208, nospecialmemory) {
+  "cardinal value assigned to integer variable too large"
+};
+
+resource rCString(8192+209, nospecialmemory) {
+  "set size too large"
+};
+
+resource rCString(8192+210, nospecialmemory) {
+  "array size too large"
+};
+
+resource rCString(8192+211, nospecialmemory) {
+  "address too large (compiler error)"
+};
+
+resource rCString(8192+212, nospecialmemory) {
+  "array has too many elements (> 65536)"
+};
+
+resource rCString(8192+217, nospecialmemory) {
+  "long cardinal value assigned to long integer variable too large"
+};
+
+resource rCString(8192+218, nospecialmemory) {
+  "assignment of a negative integer to a long cardinal variable"
+};
+
+resource rCString(8192+226, nospecialmemory) {
+  "procedure too long, must be < 64K"
+};
+
+resource rCString(8192+227, nospecialmemory) {
+  "unknown label referenced (compiler error)"
+};
+
+resource rCString(8192+228, nospecialmemory) {
+  "Unable to determine address of TOOL or GSOS procedure."
+};
+
+resource rCString(8192+229, nospecialmemory) {
+  "Label fixed already (compiler error)"
+};
+
+resource rCString(8192+231, nospecialmemory) {
+  "expression not addressable (implementation restriction)"
+};
+
+resource rCString(8192+235, nospecialmemory) {
+  "illegal selector for contant index / field"
+};
+
+resource rCString(8192+236, nospecialmemory) {
+  "too many WITH nested (> 4)"
+};
+
+resource rCString(8192+238, nospecialmemory) {
+  "illegal size of operand (implementation restriction)"
+};
+
+resource rCString(8192+239, nospecialmemory) {
+  "item not in correct mode"
+};
+
+resource rCString(8192+240, nospecialmemory) {
+  "dynamic array parameter expected"
+};
+
+resource rCString(8192+241, nospecialmemory) {
+  "illegal type for floating point operation"
+};
+
+resource rCString(8192+286, nospecialmemory) {
+  "illegal offset or range distance too big"
+};
+
+resource rCString(8192+299, nospecialmemory) {
+  "implementation restriction, compiler assertion"
+};
+
+/* Kate specific things */
+
+resource rCString(8192+300, nospecialmemory) {
+  "symbol is longer than is valid (255 characters)"
+};
+
+resource rCString(8192+301, nospecialmemory) {
+  "literal string is greater then max string length (255 characters)"
+};
+
+resource rCString(8192+304, nospecialmemory) {
+  "Invalid Directive syntax"
+};
+
+resource rCString(8192+305, nospecialmemory) {
+  "Unknown compiler directive"
+};
+
+resource rCString(8192+306, nospecialmemory) {
+  "No procedure available for substitution"
+};
+
+resource rCString(8192+307, nospecialmemory) {
+  "Substitution item not a compatible procedure"
+};
+
+resource rCString(8192+308, nospecialmemory) {
+  "Procedure must be level 0"
+};
+
+resource rCString(8192+309, nospecialmemory) {
+  "Maximum procedure nesting exceeded (max = 10)"
+};
+
+resource rCString(8192+310, nospecialmemory) {
+  "'Pascal' procedures must not be nested"
+};
+
+resource rCString(8192+311, nospecialmemory) {
+  "TOOL procedures declared as 'Pascal' are invalid"
+};
+
+resource rCString(8192+313, nospecialmemory) {
+  "Non Modula2 procedures may not use open arrays"
+};
+
+/* Miscellaneous compiler errors (all in the 400's) */
+
+resource rCString(8192+400, nospecialmemory) {
+  "compiler error, report to customer support"
+};
+
+/*
+  This version resource is the version of the compiler that last affected the
+  format of the symbol/reference files.
+*/
+
+resource rVersion(2, nospecialmemory) {
+  {
+    01,     /* major revision */
+    0,      /* minor revision */
+    0,      /* bug   version */
+    development,   /* stage */
+    02      /* non-final release */
+  },
+  verAustralia,
+  "ORCA/Modula-2",
+  "Copyright \$a9 1993 The Byteworks, EZ-Soft.  By Peter C. Easdown"
+};
+
+/*
+  This version resource is for Apple.
+*/
+resource rVersion(1, nospecialmemory) {
+  {
+    01,     /* major revision */
+    0,      /* minor revision */
+    0,      /* bug   version */
+    release, /* stage */
+    0       /* non-final release */
+  },
+  verAustralia,
+  "ORCA/Modula-2",
+  "Copyright \$a9 1993 The Byteworks, EZ-Soft.  By Peter C. Easdown"
+};
+
+resource rComment(2, nospecialmemory) {
+  "ORCA/Modula-2 may only be executed from the ORCA 2.0 Shell."
+};
+
+
+/* Terminal errors */
+
+resource rCString(8192+500, nospecialmemory) {
+  "writing of symbol file failed"
+};
+
+resource rCString(8192+501, nospecialmemory) {
+  "symbol file not successfully opened"
+};
+
+resource rCString(8192+502, nospecialmemory) {
+  "error in format of symbol file"
+};
+
+resource rCString(8192+503, nospecialmemory) {
+  "identifier buffer overflow"
+};
+
+resource rCString(8192+504, nospecialmemory) {
+  "output file not created on disk (directory/volume full?)"
+};
+
+resource rCString(8192+505, nospecialmemory) {
+  "Unable to extend file (out of memory?)"
+};
+
+resource rCString(8192+506, nospecialmemory) {
+  "Unable to create reference/symbol file."
+};
+
+resource rCString(8192+507, nospecialmemory) {
+  "Symbol file was generated by another version of the compiler"
+};
+
+resource rCString(8192+508, nospecialmemory) {
+  "Symbol file has wrong file/aux type"
+};
+
+resource rCString(8192+509, nospecialmemory) {
+  "The CDA, NDA, RTL, CDEV, INIT directives are mutually exclusive"
+};
+
+resource rCString(8192+510, nospecialmemory) {
+  "compiler directive must occur before the module declaration"
+};
+
+resource rCString(8192+511, nospecialmemory) {
+  "compiler directive not legal inside procedure scope"
+};
+
+resource rCString(8192+512, nospecialmemory) {
+  "comment without closing *)"
+};

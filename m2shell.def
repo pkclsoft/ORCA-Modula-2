@@ -1,0 +1,83 @@
+DEFINITION MODULE M2Shell;
+(*
+  This module provides an interface to the ORCA shell for the compiler.
+
+  Use procedures in this module to obtain the command line parameters.
+*)
+
+FROM GSOSInterface IMPORT
+  GSOSOutString, GSOSNameString;
+FROM OrcaShell IMPORT
+  aKeepStyle;
+
+VAR
+  DebugCode:          BOOLEAN;  (*    on command line. Default = FALSE  *)
+  SaveToDisk:         BOOLEAN;  (*                               TRUE   *)
+  ListSource:         BOOLEAN;  (* -L                            FALSE  *)
+  InvokeEdit:         BOOLEAN;  (*                               FALSE  *)
+  ShowProgress:       BOOLEAN;  (* +P                            TRUE   *)
+  AllErrFatal:        BOOLEAN;  (* -T                            FALSE  *)
+  PauseOnError:       BOOLEAN;  (* -W                            FALSE  *)
+  ShowProcs:          BOOLEAN;  (* -P supplied in lang specific options *)
+  DisplayKey:         BOOLEAN;  (* -K supplied in lang specific options *)
+  COP8asCOP5:         BOOLEAN;  (* -8 suppiled in lang specific options *)
+
+  KeepObject:         BOOLEAN;  (* TRUE if we are to actually generate  *)
+                                (* an object file.                      *)
+
+  SourceFile:         GSOSOutString;
+  OutputFile:         GSOSOutString;
+  NamesList:          GSOSOutString;
+  Switches:           GSOSOutString;
+
+  userHasAborted:     BOOLEAN;  (* User has pressed Command-Period      *)
+  terminalError:      BOOLEAN;
+  objectFileInError:  BOOLEAN;  (* An error has occured with the object file *)
+  outFileMask:        GSOSNameString;
+  currentObjectName:  GSOSNameString;
+  keepStyle:          aKeepStyle;
+
+  debugMode:          BOOLEAN;
+
+PROCEDURE GetFileName(VAR name: ARRAY OF CHAR);
+
+PROCEDURE InitM2Shell;
+(*
+  OPERATION:
+    This procedure will use the shell call "GetLInfo" to obtain the name of
+    the file to be compiled.  It also sets up a number of globals that
+    describe the compiling environment:
+
+      For example:
+
+       Do we compile to a disk file or a memory file?
+       Whether to generate debug code.
+       Whether to invoke the editor when an error is detected.
+       Whether to list the source.
+       Whether to produce a symbol table.
+       Has the name of a makefile been supplied?
+*)
+
+PROCEDURE OpenNextObjectFile(isMainModule: BOOLEAN);
+(*
+  OPERATION:
+    Given the keep style supplied in the command line info record, open an
+    object file for output.  For more detail, see page 411 or the ORCA/M
+    manual.
+*)
+
+PROCEDURE ShutdownM2Shell(successfull: BOOLEAN; name: ARRAY OF CHAR);
+(*
+  OPERATION:
+    This procedure sets up and executes a "SetLInfo" shell call in order to
+    inform the shell as to what the compiler has achieved.
+
+    The "successfull" parameter indicates whether the compile succeeded 
+    without errors or not, and is used in setting up the "SetLInfo" call.
+
+    The "name" parameter is the name of the file that was compiled last.
+*)
+
+END M2Shell.
+
+ 

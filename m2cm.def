@@ -1,0 +1,56 @@
+DEFINITION MODULE M2CM; (* HS 19.4.85; WH 9.5.85 / 27.6.85 *)
+
+
+FROM M2DM IMPORT ObjPtr, ParPtr, aAdr;
+FROM M2HM IMPORT Item, DRegSet;
+FROM M2LM IMPORT aSymbol;
+
+CONST
+  MaxExit = 15;  (* number of EXITs-1 per block *)
+
+TYPE
+  LabelRange = RECORD low, high: INTEGER; label: CARDINAL END;
+  ExitTable  = ARRAY [0..MaxExit] OF CARDINAL;
+
+VAR
+  curPrio:  CARDINAL;
+  curMod:   CARDINAL;
+
+PROCEDURE GenAssign(VAR x, y: Item);
+
+PROCEDURE GenFJ(VAR loc: CARDINAL);  (* forward jump; loc := pc *)
+PROCEDURE GenCFJ(VAR x: Item; VAR loc: CARDINAL);
+PROCEDURE GenBJ(loc: CARDINAL);      (* backward jump to loc *)
+PROCEDURE GenCBJ(VAR x: Item; loc: CARDINAL);
+
+PROCEDURE PrepCall(VAR x: Item; VAR fp: ParPtr; VAR regs: DRegSet);
+PROCEDURE GenParam(VAR x: Item; VAR ap: Item; f: ParPtr);
+PROCEDURE GenCall(VAR x: Item; regs: DRegSet);
+PROCEDURE GenEnter(VAR l: aAdr; proc: ObjPtr; isImp: BOOLEAN);
+PROCEDURE GenResult(VAR x: Item; proc: ObjPtr; VAR l: CARDINAL);
+PROCEDURE GenReturn(proc: ObjPtr; l: CARDINAL; isimp: BOOLEAN);
+
+PROCEDURE GenCase1(VAR x: Item; VAR l0: CARDINAL);
+PROCEDURE GenCase2(done: CARDINAL);
+PROCEDURE GenCase3(VAR x: Item; l0, l1, n: CARDINAL;
+                   VAR tab: ARRAY OF LabelRange);
+
+PROCEDURE GenFor1(v: Item; VAR e1: Item);
+PROCEDURE GenFor2(v: Item; VAR e1, e2: Item);
+PROCEDURE GenFor3(v: Item; VAR e2, e3: Item; VAR l0, l1: CARDINAL);
+PROCEDURE GenFor4(v: Item; VAR e2, e3: Item; l0, l1: CARDINAL);
+
+PROCEDURE GenLoop1(VAR m, n: CARDINAL);
+PROCEDURE GenLoop2(m: CARDINAL; VAR n: CARDINAL);
+PROCEDURE GenExit(VAR n: CARDINAL);
+
+PROCEDURE GenEnterMod(mno, pno: CARDINAL; mainModule: BOOLEAN);
+PROCEDURE GenExitMod;
+PROCEDURE GenInitMod(VAR endOfInit: CARDINAL;
+                         isimp:     BOOLEAN;
+                         segName:   aSymbol;
+                         mod:       ObjPtr);
+
+END M2CM.
+
+ 

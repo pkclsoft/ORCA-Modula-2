@@ -1,0 +1,232 @@
+DEFINITION MODULE M2HM; (* HS 19.4.85 / 10.6.86 / 28.4.89; WH 29.5.85 *)
+
+  (* Interface to the MOTOROLA MC68000/MC68010/MC68020 processors. *)
+
+  FROM M2DM IMPORT ObjPtr, StrPtr, ConstValue, aAdr;
+  FROM M2Lib IMPORT aTerminateStatus;
+  FROM M2SM IMPORT Symbol;
+
+  CONST
+          (* Instruction size for simple types         *)
+          byte = 0;   word = 1;   long = 2;   quad = 3;   setsized = 4;
+
+          (* Descriptor size for dynamic array param.  *)
+          DynArrDesSize = 6;
+          maxLev        = 10;
+
+  TYPE    Condition = ( T,  F, HI, LS, CC, CS, NE, EQ,
+                       VC, VS, PL, MI, GE, LT, GT, LE,
+                       FF,    FEQ,  FGT,  FGE,  FLT,  FLE,  FGL, FGLE,
+                       FNGLE, FNGL, FNLE, FNLT, FNGE, FNGT, FNE, FT );
+
+          WidType   = [byte .. setsized];
+          ShiType   = (Asl, Asr, Lsl, Lsr, Rol, Ror);
+
+          DRegister = (erNone, er1, er2, er3, er4, er5, er6, er7, erCPU,
+                       erAcc, erXreg, erYreg, erQuad1, erQuad2);
+          DRegSet   = SET OF DRegister;
+
+          ItemMode  = (DregMd, regMd, locMd, glbMd, stkMd, conMd,
+                       cocMd,
+                       typMd, procMd, toolMd,  prgMd,
+                       fltMd);
+
+          ItSet     = SET OF ItemMode;
+
+          Item      = RECORD
+                        typ:    StrPtr;
+                        stkPtr: aAdr;
+
+                        CASE mode: ItemMode OF
+                          DregMd, regMd, locMd, stkMd,
+                          glbMd:  mod, lev:   CARDINAL;
+                                  adr, off:   aAdr;
+                                  wid:        WidType;
+                                  isParam:    BOOLEAN;
+                                  (*
+                                    if indir is true, then the value at the
+                                    location indicated by adr and off is
+                                    actually a four byte address of the actual
+                                    data item
+                                  *)
+                                  indir:      BOOLEAN;  (* indirect addressing *)
+                                  name:       CARDINAL; (* name of item *)
+                                  (*
+                                    if indexed is true, then look for the
+                                    two byte index on the stack at indexAdr,
+                                    ready for loading into an index register
+                                  *)
+                                  indexed:    BOOLEAN;
+                                  indexReg:   DRegister;
+                                  register:   DRegister;
+                                  (*
+                                    if "notpop" is true, then the value is on
+                                    the stack and should not be popped from
+                                    the stack, unless done explicitly.
+                                  *)
+                                  notpop:     BOOLEAN;
+                                  parent:     ObjPtr;
+                        | conMd:  val:        ConstValue;
+                        | cocMd:  CC:         Condition;
+                                  Tjmp, Fjmp: CARDINAL;
+                        | procMd,
+                          toolMd: proc:       ObjPtr;
+                        | prgMd:  where:      CARDINAL;
+                        | fltMd:  stkAdr:     aAdr;
+                        | typMd:  (* no field *)
+                        END;
+                      END;
+
+          Processor = ARRAY[0..9] OF CHAR;
+
+          direction = (logLeft, left, right, rightfill); (* shift directions *)
+          loginst = (lAnd, lOr, lEor);
+
+  VAR     curLev:         CARDINAL;
+          stackPointer:   aAdr;
+          errorInProc:    BOOLEAN;
+          dontLoseIndex:  BOOLEAN;
+
+  PROCEDURE ProcessorID(VAR id: Processor);
+
+  PROCEDURE Lock(reg: DRegister);
+  PROCEDURE Unlock(reg: DRegister);
+  PROCEDURE RegAdr(reg: DRegister): aAdr;
+  PROCEDURE GetReg(size: WidType; VAR reg: DRegister);
+
+  PROCEDURE GenTerminate(reason: aTerminateStatus);
+
+  PROCEDURE Release(VAR x: Item);
+  PROCEDURE SaveRegs(VAR savedRegs: DRegSet);
+  PROCEDURE SetRegs(toRegs: DRegSet);
+
+  PROCEDURE LongVal  (VAR x: Item): LONGINT;   (* 32 bits of constant x      *)
+  PROCEDURE WordVal  (VAR x: Item): INTEGER;   (* 16 bits of constant x      *)
+  PROCEDURE SimpleC  (VAR x: Item): BOOLEAN;   (* is x a simple constant     *)
+  PROCEDURE SignedT  (VAR x: Item): BOOLEAN;   (* is x a signed type         *)
+  PROCEDURE SimpleT  (VAR x: Item): BOOLEAN;   (* is x a simple type         *)
+  PROCEDURE RealT    (VAR x: Item): BOOLEAN;   (* is x a floating-point type *)
+
+  PROCEDURE SetglbMd(VAR x: Item; fadr: aAdr;  ftyp: StrPtr);
+  PROCEDURE SetlocMd(VAR x: Item; fadr: aAdr;  ftyp: StrPtr);
+  PROCEDURE SetregMd(VAR x: Item; ftyp: StrPtr);
+  PROCEDURE SetconMd(VAR x: Item; fval: LONGINT;  ftyp: StrPtr);
+  PROCEDURE SetstkMd(VAR x: Item; ftyp: StrPtr);
+  PROCEDURE SetDregMd(VAR x : Item; reg: DRegister; ftyp : StrPtr);
+
+  PROCEDURE Isz (VAR x: Item; VAR fsz: WidType); (* instruction size for x  *)
+
+  PROCEDURE Branch    (cond: Condition; VAR fJmp, tJmp: CARDINAL);(* jump forward  *)
+  PROCEDURE BranchWith(cond : Condition; VAR tJmp, fJmp, wJmp: CARDINAL);
+
+  PROCEDURE InvertCC  (cond: Condition): Condition;  (* inverse condition *)
+
+  PROCEDURE StackTop(i: INTEGER);          (* increment stack pointer SP*)
+  PROCEDURE GenHalt(haltindex: CARDINAL);  (* call System.HALTX proc.   *)
+
+  PROCEDURE LoadVal   (VAR x: Item; destReg: DRegister); (* load value of x *)
+  PROCEDURE PushVal   (VAR x: Item);       (* push value of x           *)
+  PROCEDURE LoadAdr   (VAR x: Item);       (* load address of x         *)
+  PROCEDURE PushAdr   (VAR x: Item);       (* push address of x         *)
+  PROCEDURE LoadD     (VAR x: Item);       (* load data designated by x *)
+  PROCEDURE LoadX     (VAR x: Item;        (* load and extend value(x)  *)
+                       req: WidType);      (* to requested width        *)
+
+  PROCEDURE Move      (VAR x, y: Item);    (* value(x) --> y            *)
+  PROCEDURE MoveAdr   (VAR x, y: Item);    (* adr(x)   --> y            *)
+  PROCEDURE MoveBlock (VAR x, y: Item;     (* mve 'sz' bytes of x to y  *)
+                           sz: CARDINAL; isstring: BOOLEAN);
+
+
+  PROCEDURE Neg1      (VAR x: Item);       (* x := -x                   *)
+  PROCEDURE Abs1      (VAR x: Item);       (* x := ABS(x)               *)
+  PROCEDURE Cap1      (VAR x: Item);       (* x := CAP(x)               *)
+  PROCEDURE Tst1      (VAR x: Item);       (* x - 0                     *)
+  PROCEDURE Com1      (VAR x: Item);       (* x := complement(x)        *)
+  PROCEDURE Inc1      (VAR x: Item);       (* x := x + 1                *)
+  PROCEDURE Dec1      (VAR x: Item);       (* x := x - 1                *)
+
+  PROCEDURE Add2      (VAR x, y: Item);    (* x := x + y                *)
+  PROCEDURE Sub2      (VAR x, y: Item);    (* x := x - y                *)
+  PROCEDURE And2      (VAR x, y: Item);    (* x := x AND y              *)
+  PROCEDURE Or2       (VAR x, y: Item);    (* x := x OR y               *)
+  PROCEDURE Eor2      (VAR x, y: Item);    (* x := x EOR y              *)
+  PROCEDURE Div2      (VAR x, y: Item);    (* x := x DIV y              *)
+  PROCEDURE Mod2      (VAR x, y: Item);    (* x := x MOD y              *)
+  PROCEDURE Mul2      (VAR x, y: Item);    (* x := x * y                *)
+  PROCEDURE Cmp2      (VAR x, y: Item);    (* x - y                     *)
+  PROCEDURE In2       (VAR x, y: Item);    (* x IN y                    *)
+  PROCEDURE Shi2      (VAR x, y: Item;     (* x := x shifted by y       *)
+                       shiftop: direction);
+  PROCEDURE Ash2      (VAR x, y :Item;     (* x := x arith.shifted by y *)
+                       shiftop: ShiType);
+
+  PROCEDURE ConvertTyp(functyp: StrPtr; VAR x: Item);
+    (* x := x converted to type functyp *)
+
+  PROCEDURE ConIndex(VAR x: Item; inc: LONGINT);
+    (* constant offset/index inc to base x *)
+
+  PROCEDURE VarIndex(VAR x, y: Item; elsize: CARDINAL);
+    (* variable offset/index y to base x (elements of size elsize) *)
+
+  PROCEDURE GetHigh(VAR x: Item);
+    (* get high bound of dynamic array parameter x *)
+
+  PROCEDURE Normalize(VAR x: Item; i: INTEGER);
+    (* normalize subrange x to zero by lowbound i *)
+
+  PROCEDURE CheckHigh(VAR x, high: Item);
+    (* check x in the variable range [ 0 .. high ] *)
+
+  PROCEDURE CheckClimit(VAR x: Item; limit: LONGINT);                (* V2.6x *)
+    (* check x in the constant interval [ 0 .. limit ] *)
+
+  PROCEDURE CheckRange(VAR x: Item; min, max, BndAdr: LONGINT);
+    (* check x in the constant range [ min .. max ] *)
+
+  PROCEDURE CheckDbltoSingle(VAR x, y: Item);
+    (* check for assignment of double-word x to single-word y *)
+
+  PROCEDURE DynArray(VAR x, y: Item);
+    (* descriptor for dynamic array parameter *)
+
+  PROCEDURE CopyDynArray(descrAdr: INTEGER; eleSize: CARDINAL);
+
+  PROCEDURE EnterCase(VAR x: Item; base: CARDINAL; lo, hi: INTEGER);
+    (* enter case-statement processor *)
+
+  PROCEDURE ExitCase;
+    (* leave case-statement processor *)
+
+  PROCEDURE Link(l: aAdr; lev: CARDINAL);
+    (* generate entry-code for procedure at level lev *)
+
+  PROCEDURE Unlink(parSize: CARDINAL; lev: CARDINAL);
+    (* generate exit-code for procedure at level lev *)
+
+  PROCEDURE StoreResult(VAR x: Item; size: CARDINAL);
+  (*
+    OPERATION:
+      Will store 'x' on the stack at the place designated as the result space
+      for a function.  This result space is located by adding 'size' to the
+      current StackFramePointer.
+  *)
+
+  PROCEDURE CallExt(proc: ObjPtr);    (* call of external procedure  *)
+  PROCEDURE CallInd(VAR x: Item);     (* call of procedure variable  *)
+
+  PROCEDURE EnterModule;              (* main module's entry code    *)
+  PROCEDURE ExitModule;               (* main module's exit code     *)
+  PROCEDURE InitModule(m : CARDINAL); (* init of imported modules    *)
+
+  PROCEDURE InitM2HM;
+
+  PROCEDURE CheckCPUUsage(VAR x: Item);
+  (*
+    OPERATION:
+      If the CPU registers are locked, then push the item that has them locked
+      onto the stack, and release them.
+  *)
+END M2HM.
+ 

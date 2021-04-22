@@ -1,0 +1,106 @@
+DEFINITION MODULE M2SM; (*NW 17.8.83 / 15.12.85*)
+
+  FROM Common IMPORT String255;
+  FROM FastFileSystem IMPORT File;
+  FROM M2DM IMPORT ObjPtr;
+
+  CONST IdBufLeng = 56000;
+
+  TYPE  Symbol = (null,
+(*  1*) times, slash, div, rem, mod, and,
+(*  7*) plus, minus, or,
+(* 10*) eql, neq, lss, leq, gtr, geq, in,
+(* 17*) arrow, period, comma, colon, ellipsis, rparen, rbrak, rbrace,
+(* 25*) of, then, do, to, by,
+(* 30*) lparen, lbrak, lbrace, not, becomes, number, string, ident,
+(* 38*) semicolon, bar, end, else, elsif, until,
+(* 44*) if, while, repeat, loop, with, exit, return, case, for,
+(* 53*) array, pointer, record, set,
+(* 57*) begin, tool, gsos, const, type, var, forward, procedure, module,
+(* 66*) definition, implementation, export, qualified, from,
+(* 71*) import, eof);
+
+        aDirective = (NDA, CDA, RTL, CDEV, INIT, NoImp, Pascal,
+                      RangeCheck, OverflowCheck, StackSize, Segment, Dynamic,
+                      StackCheck, Keep, ChainTo, NILCheck, DataBank);
+        aDirectiveSet = SET OF aDirective;
+
+  (*sym, id, numtyp, intval, dblval, realval, lrlval
+    are implicit results of GetSym*)
+
+  aGSVersion =
+    RECORD
+      version:  LONGINT;
+      country:  CARDINAL;
+      name:     String255;
+      notice:   String255;
+    END;
+  pGSVersion = POINTER TO aGSVersion;
+  hGSVersion = POINTER TO pGSVersion;
+
+  pModListEntry = POINTER TO aModListEntry;
+
+  aModListEntry =
+    RECORD
+      modnum: CARDINAL;
+      module: ObjPtr;
+      next:   pModListEntry;
+    END;
+
+VAR
+  sym   : Symbol;
+  id      : CARDINAL;
+  numtyp  : CARDINAL;
+     (* 1 = card/int, 2 = longint, 3 = char, 4 = real, 5 = longreal,
+        6 = strchar *)
+  intval  : CARDINAL;
+  dblval  : LONGINT;
+  realval : REAL;
+  lrlval  : LONGREAL;
+  scanerr : BOOLEAN;
+  errorCount: CARDINAL;
+  IdBuf   : ARRAY [0..IdBufLeng-1] OF CHAR; (*identifier buffer*)
+  moduleDeclared: BOOLEAN;
+  isint   : BOOLEAN;
+  Directives: aDirectiveSet;
+  firstError:
+    RECORD
+      position: LONGINT;
+      string:   ARRAY [0..79] OF CHAR;
+    END;
+  source:   File;
+  sourceLine: CARDINAL;
+  versionHandle:  hGSVersion;
+  modList:      pModListEntry;
+
+PROCEDURE InitScanner(filename: ARRAY OF CHAR);
+PROCEDURE Diff(i, I: CARDINAL): INTEGER;
+PROCEDURE Enter(id: ARRAY OF CHAR): CARDINAL;
+PROCEDURE KeepId;
+PROCEDURE GetSym;
+PROCEDURE Mark(n: CARDINAL);
+PROCEDURE CloseScanner;
+PROCEDURE AddModule(number: CARDINAL; mod: ObjPtr);
+PROCEDURE FindModule(number: CARDINAL; VAR mod: ObjPtr);
+PROCEDURE InitM2SM;
+
+PROCEDURE SourceOpened(file: ARRAY OF CHAR): BOOLEAN;
+(*
+  OPERATION:
+    Attempts to open the source file, and returns TRUE if successfull.
+*)
+
+PROCEDURE GetSourcePos(VAR p0, p1: CARDINAL);
+(*
+  OPERATION:
+    Returns the current position within the source file.
+*)
+
+PROCEDURE ReportBadKey(expected, got: ObjPtr; filename: ARRAY OF CHAR);
+(*
+  OPERATION:
+    Reports an error where the key of a Symbol file is not correct.
+*)
+
+END M2SM.
+ 

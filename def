@@ -1,0 +1,14 @@
+assemble m2sets.def
+assemble m2shell.def
+assemble m2clock.def
+assemble m2omf.def
+assemble m2dm.def
+assemble m2debug.def
+assemble m2sm.def
+assemble m2hm.def
+assemble m2lm.def
+assemble m2fm.def
+assemble m2em.def
+assemble m2cm.def
+assemble m2tm.def
+assemble m2rm.def

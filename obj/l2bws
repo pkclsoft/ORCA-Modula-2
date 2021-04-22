@@ -1,0 +1,3 @@
+link +l +s compile m2cm m2clock m2omf m2debug m2dm m2em m2fm m2hm m2lm m2rm m2sm m2tm m2shell m2sets keep=m2c >16/modula2.sym
+asm 23/work/compile.rez keep=m2c rez=(-i 13/rinclude)
+

@@ -1,0 +1,27 @@
+DEFINITION MODULE M2TM;   (*NW 28.3.83 / 15.12.85*)
+
+  FROM M2DM IMPORT ObjPtr, ObjClass, StrPtr, StrForm, ParPtr, PDPtr;
+
+  VAR topScope, Scope: ObjPtr;  (*header of scope located by Find*)
+
+  PROCEDURE FindInScope(id: CARDINAL; root: ObjPtr): ObjPtr;
+  PROCEDURE Find(id: CARDINAL): ObjPtr;
+  PROCEDURE FindImport(id: CARDINAL): ObjPtr;
+
+  PROCEDURE NewObj(id: CARDINAL; class: ObjClass): ObjPtr;
+  PROCEDURE NewStr(form: StrForm): StrPtr;
+  PROCEDURE NewPar(ident: CARDINAL; isvar: BOOLEAN; last: ParPtr): ParPtr;
+  PROCEDURE NewImp(scope, obj: ObjPtr);
+
+  PROCEDURE NewScope(kind: ObjClass);
+  PROCEDURE CloseScope;
+
+  PROCEDURE CheckUDP(obj, node: ObjPtr);
+  PROCEDURE MarkHeap;
+  PROCEDURE ReleaseHeap;
+  PROCEDURE InitTableHandler;
+  PROCEDURE InitM2TM;
+
+END M2TM.
+
+ 

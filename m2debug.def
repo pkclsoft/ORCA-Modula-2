@@ -1,0 +1,27 @@
+(*$Segment 'M2Debug'*)
+DEFINITION MODULE M2Debug;
+
+(*
+  This module generates the various prizm debugger records.
+*)
+
+FROM M2DM IMPORT ObjPtr;
+
+CONST
+  breakPointCode  = 204C;
+  autoGoCode      = 201C;
+
+VAR
+  lineType: (step, breakPoint, autoGo);
+
+PROCEDURE GenLine(lineNumber: CARDINAL);
+
+PROCEDURE GenStartProcedure(name: ARRAY OF CHAR);
+
+PROCEDURE GenEndProcedure;
+
+PROCEDURE GenDebugSymbols(header: ObjPtr);
+
+PROCEDURE GenLoadSource(filename: ARRAY OF CHAR);
+
+END M2Debug.

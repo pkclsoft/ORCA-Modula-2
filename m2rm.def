@@ -1,0 +1,33 @@
+DEFINITION MODULE M2RM; (*JG 24.10.85 / NW 17.12.85*)
+
+FROM M2DM IMPORT ObjPtr, aAdr;
+
+CONST
+  SymRefFileType  = 5EH;
+  SymAuxType      = 8006H;
+  RefAuxType      = 8007H;
+
+VAR
+  ModNo:    CARDINAL; (*current module number*)
+  ModList:  ObjPtr; (*list of loaded modules*)
+
+PROCEDURE InitRef;
+
+PROCEDURE InRef(VAR filename: ARRAY OF CHAR; VAR mod: ObjPtr;
+                VAR adr: aAdr; VAR pno: CARDINAL);
+
+PROCEDURE OpenRef(refName: ARRAY OF CHAR);
+
+PROCEDURE CloseRef(adr:     aAdr;
+                   pno:     CARDINAL;
+                   auxType: LONGINT;
+                   fileOK:  BOOLEAN);
+
+PROCEDURE OutUnit(unit: ObjPtr);
+PROCEDURE OutName(name: ARRAY OF CHAR);
+PROCEDURE RefPoint;
+PROCEDURE InitM2RM;
+
+END M2RM.
+
+ 

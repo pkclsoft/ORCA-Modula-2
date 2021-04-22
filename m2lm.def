@@ -1,0 +1,286 @@
+DEFINITION MODULE M2LM;  (* HS 20.5.85; WH 29.5.85 *)
+
+  FROM SYSTEM IMPORT WORD;
+  FROM M2DM   IMPORT ObjPtr, StrPtr, KeyPtr, aAdr;
+  FROM M2HM   IMPORT Item;
+
+CONST
+  aSymbolLength = 256;
+
+TYPE
+  aSymbol         = ARRAY [0..aSymbolLength-1] OF CHAR;
+  pStringListEntry;
+
+VAR
+  pc:               CARDINAL;
+  maxM:             CARDINAL;
+  CodeOverflow:     BOOLEAN;
+  globalStringList: pStringListEntry;
+  localStringList:  pStringListEntry;
+  objectCodeSize:   LONGINT;
+  objectDataSize:   LONGINT;
+
+  (*
+    These variables are setup as a result of processing one or more compiler
+    directives.
+  *)
+  segmentName:      aSymbol;
+  CDAName:          CARDINAL;
+  CDAShutdown:      CARDINAL;
+  NDAOpen:          CARDINAL;
+  NDAClose:         CARDINAL;
+  NDAAction:        CARDINAL;
+  NDAInit:          CARDINAL;
+  NDAPeriod:        CARDINAL;
+  NDAMask:          CARDINAL;
+  NDAMenuline:      CARDINAL;
+  CDEVName:         CARDINAL;
+  Stacksize:        CARDINAL;
+  KeepName:         CARDINAL;
+  ChainToName:      CARDINAL;
+
+PROCEDURE PutGlobals(isImp: BOOLEAN);
+(*
+  OPERATION:
+    Will write to the object file, the list of Globals and string constants that
+    has been declared for the current module.  These globals will be placed in a
+    segment called ~GLOBALS.
+*)
+
+PROCEDURE IdToSymbol(id: WORD; VAR theSymbol: aSymbol);
+(*
+  PROCEDURE:
+    Will convert an id in the symbol table to a symbol string for further
+    manipulation.
+*)
+
+PROCEDURE GetStringName(    number:   CARDINAL;
+                            module:   CARDINAL;
+                            level:    CARDINAL;
+                        VAR theLabel: aSymbol);
+(*
+  OPERATION:
+    Will return the name of the specified string.
+*)
+
+PROCEDURE GetModuleKey(mno: CARDINAL; VAR theKey: aSymbol; VAR OK: BOOLEAN);
+(*
+  OPERATION:
+    Returns the textual key used by the compiler for link time version 
+    checking.
+*)
+
+PROCEDURE GetModuleName(mno: CARDINAL; VAR theName: aSymbol; VAR OK: BOOLEAN);
+(*
+  OPERATION:
+    Will get the specified module name and return it to the caller.
+*)
+
+PROCEDURE GetModuleNameByPtr(x: ObjPtr; VAR modName: aSymbol);
+(*
+  OPERATION:
+    Retrieves a full module name.  For use when allowing for local modules.
+*)
+
+PROCEDURE GetProcedureName(VAR x: ObjPtr; VAR varName: aSymbol);
+(*
+  OPERATION:
+    Will get both the module and procedure name of the specified object.
+    These are concatenated to form one name, and that is returned.
+*)
+
+PROCEDURE GetVariableName(VAR x: Item; VAR varName: aSymbol);
+(*
+  OPERATION:
+    Returns the full name of the variable (module_variable).
+*)
+
+PROCEDURE AddBytesToObjectFile(codeSize: CARDINAL);
+(*
+  OPERATION:
+    Will increment the size of the current level zero procedure, as well as
+    the entire object file being produced.
+
+    It then checks to see if the current procedure length has exceeded 64K,
+    which is the maximum size for any GSOS segment.
+*)
+
+PROCEDURE AllocGlobalVar(theVar: ObjPtr);
+(*
+  OPERATION:
+    Will create a new Global variable for the current module, adding it to
+    the list.
+
+    An example of a global variable name as placed in this list would be:
+
+      M2LM_AllocGlobalVar
+*)
+
+PROCEDURE PutLinkAddress(labelNumber: CARDINAL; size: CARDINAL);
+(*
+  OPERATION:
+    Will generate a line in the object file that places the address of the
+    specified local label at the current point.
+*)
+
+PROCEDURE clearStringList(VAR list: pStringListEntry);
+(*
+  OPERATION:
+    Clears out the list of string constants.  This will normally be called at
+    the end of the production of a procedures code.
+*)
+
+PROCEDURE AllocString(VAR list:   pStringListEntry;
+                          pos:    CARDINAL;
+                      VAR number: CARDINAL;
+                      VAR length: CARDINAL);
+(*
+  OPERATION:
+    Will create a new string constant for the current code segment.
+*)
+
+PROCEDURE AllocPString(VAR list:   pStringListEntry;
+                           str:    ARRAY OF CHAR;
+                       VAR number: CARDINAL;
+                       VAR length: CARDINAL);
+(*
+  OPERATION:
+    Will create a new "pascal" string constant for the current code segment.
+*)
+
+PROCEDURE AllocCString(VAR list:   pStringListEntry;
+                           str:    ARRAY OF CHAR;
+                       VAR number: CARDINAL;
+                       VAR length: CARDINAL);
+(*
+  OPERATION:
+    Will create a new "C" string constant for the current code segment.
+*)
+
+PROCEDURE AllocChar(VAR list:   pStringListEntry;
+                        ch:     CHAR;
+                    VAR number: CARDINAL;
+                    VAR length: CARDINAL);
+(*
+  OPERATION:
+    Will create a new string constant for the current code segment.
+*)
+
+PROCEDURE AllocBounds (min, max: INTEGER; size: CARDINAL; VAR adr: INTEGER);
+
+PROCEDURE PutStringConstants(VAR list: pStringListEntry);
+(*
+  OPERATION:
+    Will write to the object file, the list of string constants that has been
+    declared for the current code segment.
+*)
+
+PROCEDURE MergedLinks(L0, L1: CARDINAL): CARDINAL;
+
+PROCEDURE newLink(VAR number: CARDINAL);
+(*
+  OPERATION:
+    This procedure will allocate a new local label number, and return the
+    label text to the caller.
+*)
+
+PROCEDURE FixLink(labelNumber: CARDINAL);
+(*
+  OPERATION:
+    Will generate a line on the object file that places the specified local
+    label at the current point.
+*)
+
+PROCEDURE PutLinkReference(operand:     CARDINAL;
+                           labelNumber: CARDINAL;
+                           codeSize:    CARDINAL);
+(*
+  OPERATION:
+    Will generate a line in the object file that places the a reference to the
+    specified local label at the current point.  The reference is preceded by
+    an operand as specified, thus allowing references like:
+
+        LDA   _Loc2
+    and BRA   _Loc24
+*)
+
+PROCEDURE CloseObjectFile;
+(*
+  OPERATION:
+    This procedure closes the object file.  If an error occured during the
+    compilation, then the object file is deleted.
+*)
+
+PROCEDURE OpenObjectFile(filename: ARRAY OF CHAR; extension: ARRAY OF CHAR);
+(*
+  OPERATION:
+    Opens the object file.
+*)
+
+PROCEDURE InitOMF;
+(*
+  OPERATION:
+    Initialises the object file formatter module, in preparation for the
+    compilation of a new module.
+*)
+
+PROCEDURE PutDisplayReference(instruction:  CARDINAL;
+                              value:        WORD;
+                              proc:         ObjPtr;
+                              codeSize:     CARDINAL);
+(*
+  OPERATION:
+    Generates an instruction that has as it's operand a constant value that is
+    calculated by adding "value" to the value of the global symbol specified
+    by the name of the parent procedure. eg:
+
+        Where the parent procedure is "M2LM_PutDPReference", the global symbol
+        will be "M2LM_PutDPReference__OTP" where OTP stands for Offset To
+        Parameters.
+*)
+
+PROCEDURE PutDPReference(operand:   CARDINAL;
+                         adr:       WORD;
+                         codeSize:  CARDINAL);
+(*
+  OPERATION:
+    Will generate a line in the form:
+
+      operand $adr
+
+    eg.  LDA $02
+*)
+
+PROCEDURE PutLongReference(operand:   CARDINAL;
+                           adr:       LONGCARD;
+                           codeSize:  CARDINAL);
+(*
+  OPERATION:
+    Will generate a line in the form:
+
+      operand $adr
+
+    eg.  LDA $020000
+*)
+
+PROCEDURE PutStackReference(operand:   CARDINAL;
+                            adr:       WORD);
+(*
+  OPERATION:
+    Will generate a line in the form:
+
+      operand $adr,S
+
+    eg.  LDA $02,S
+*)
+
+PROCEDURE PutOp(operand:  CARDINAL;
+                codeSize: CARDINAL);
+(*
+  OPERATION:
+    Places the operand into the object file as one or two bytes.
+*)
+
+PROCEDURE InitM2LM;
+
+END M2LM.

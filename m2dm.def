@@ -1,0 +1,199 @@
+DEFINITION MODULE M2DM;  (* NW 23.3.85; WH 22.5.85 / 9.1.85; *)
+                         (*             HS 19.2.86 / 31.5.86 *)
+
+FROM M2Sets IMPORT aFakeSet;
+FROM SYSTEM IMPORT ADDRESS;
+
+  CONST   WordSize    =     16;
+          MaxChar     =   377C;
+          MaxCard     =  65535;
+          MinInt      = -32767 - 1;
+          MaxInt      =  32767;
+          MinDouble   =  80000000H;
+          MaxDouble   =  7FFFFFFFH;
+          NilVal      =     0;
+
+          WorkingStorage =  22; (* preserve 22 bytes of working storage
+                                   on the stack below the procedure
+                                   local variables. *)
+          ExpResult      =  16; (* location on direct page where results of
+                                   expressions are kept *)
+          DirectPageSize = 256;
+
+  TYPE    ObjPtr      = POINTER TO Object;
+          StrPtr      = POINTER TO Structure;
+          ParPtr      = POINTER TO Parameter;
+          PDPtr       = POINTER TO PDesc;
+          KeyPtr      = POINTER TO Key;
+
+          aAdr        = INTEGER;
+          aSize       = LONGINT;
+
+          ObjClass    = (Header, Const, Typ, Var, Field, Proc, Tool, Module, Temp);
+          sObjClass   = SET OF ObjClass;
+
+          (* Note:   for scalar types:     form <= Double        *)
+          (*         for subrange types:   RBaseTyp^.form < form *)
+          (*         for structured types: form > Opaque         *)
+          StrForm     = (Undef, Bool, Char, Card, CardInt, Int, Enum, LCard, Double,
+                         Range, Real, LongReal, Pointer, Set, ProcTyp, Opaque,
+                         String, Array, Record);
+
+          (* Note:   basic standard procedures :   Abs  .. Val    *)
+          (*         floating point supplement :   ACos .. Round  *)
+          Standard    = (Abs, Adr, Cap, Chr, Dec, Dispose, Excl, Float, FloatD,
+                         Getreg, Halt, High, Inc, Incl, Inline, IOTransfer,
+                         Long, Max, Min, New, NewProcess, Odd, Ord, Setreg,
+                         Shift, Short, Size, Transfer, Tsize, Trunc, TruncD,
+                         Val,
+                         ACos, ASin, ATan, ATanH, Cos, CosH, EtoX, EtoXM1, GetExp,
+                         GetMan, LogN, LogNP1, Log10, Log2, Scale, Sin, SinH,
+                         Sqrt, Tan, TanH, TentoX, TwotoX, CRom, CRomD, Entier,
+                         Round,
+                         NonStand);
+
+          ConstValue  = RECORD
+                           strChar:                     BOOLEAN;
+                           modNo:                       CARDINAL;
+                           CASE :StrForm OF
+                             Undef:               U:    LONGINT;
+                           | Bool:                B:    BOOLEAN;
+                           | Char, Enum:          Ch:   CHAR;
+                                               prev:    ObjPtr;
+                           | Card, CardInt:       C:    CARDINAL;
+                           | Int:                 I:    INTEGER;
+                           | LCard, Double:       D:    LONGINT;
+                           | Real:                R:    REAL;
+                           | Set:                 FS:   aFakeSet;
+                           | String:  D0, D1, D2, D3:   CARDINAL;
+                           | LongReal:            X:    LONGREAL;
+                           (* M2RM assumes correct overlaying of X *)
+                           (* with the fields D0, D1, D2 and D3.   *)
+                           END;
+                         END;
+
+          PDesc       = RECORD
+                          forward, exp: BOOLEAN;
+                          num, lev, size: CARDINAL;
+                          adr: aAdr;
+                          entryPoint: CARDINAL;
+                          accessLink: CARDINAL;
+                        END;
+
+          language    = (modula2, pascal);
+
+          Object      = RECORD
+                          name:     CARDINAL;  (* index to name buffer *)
+                          typ:      StrPtr;
+                          left,
+                          right,
+                          next:     ObjPtr;
+                          exported: BOOLEAN;
+                          parent: ObjPtr;
+                          CASE class: ObjClass OF
+                            Header: kind:       ObjClass;  (* Typ, Proc, Module *)
+                                    last, heap: ObjPtr;
+                                    withadr:    aAdr;
+                          | Const:  conval:     ConstValue;
+                          | Typ:    mod:        ObjPtr;
+                          | Var:    varpar:     BOOLEAN;
+                                    vmod, vlev: CARDINAL;
+                                    vadr:       aAdr;
+                                    vpar:       BOOLEAN;
+                          | Field:  offset:     aAdr;
+                          | Proc:   pd:         PDPtr;
+                                    firstParam: ParPtr;
+                                    firstLocal: ObjPtr;
+                                    pmod:       CARDINAL;
+                                    procType:   language;
+                          | Tool:   cd:         PDPtr;
+                                    firstArg:   ParPtr;
+                                    std:        Standard;
+                                    cnum:       CARDINAL;
+                                    GSOSproc:   BOOLEAN;
+                          | Module: key:        KeyPtr;
+                                    firstObj,
+                                    root:       ObjPtr;
+                                    modno:      CARDINAL;
+                                    isInt:      BOOLEAN;
+                                    parentMod:  CARDINAL;
+                          | Temp:   baseref:    INTEGER;
+                          END;
+                        END;
+
+          Structure   = RECORD
+                          strobj: ObjPtr;  (* object (type) naming structure *)
+                          size: aSize;
+                          ref: CARDINAL;
+                          CASE form: StrForm OF
+                          | Undef, Bool, Char, Card, CardInt, Int,     (* V2.6y *)
+                            LCard, Double, Real, LongReal, String:     (* V2.6y *)
+                          | Enum:    ConstLink: ObjPtr;
+                                     NofConst:  CARDINAL;
+                          | Range:   RBaseTyp:  StrPtr;
+                                     min, max:  LONGINT;
+                                     BndAdr:    aAdr;
+                          | Pointer: PBaseTyp:  StrPtr;
+                                     BaseId:    CARDINAL;  (* forward refs *)
+                          | Set:     SBaseTyp:  StrPtr;
+                          | Array:   ElemTyp,
+                                     IndexTyp:  StrPtr;
+                                     dyn:       BOOLEAN;
+                          | Record:  firstFld:  ObjPtr;
+                                     debugOffset: CARDINAL;
+                                     debugDefining: BOOLEAN;
+                          | ProcTyp: firstPar:  ParPtr;
+                                     resTyp:    StrPtr;
+                          | Opaque:  (* no field *)
+                          END;
+                        END;
+
+          Parameter   = RECORD
+                          name:    CARDINAL;
+                          varpar:  BOOLEAN;
+                          typ:     StrPtr;
+                          next:    ParPtr;
+                        END;
+
+          Key         = RECORD
+                          k0, k1, k2: CARDINAL;
+                        END;
+
+  VAR     mainmod:      ObjPtr;
+          sysmod:       ObjPtr;
+          notyp:        StrPtr;
+          undftyp:      StrPtr;
+          booltyp:      StrPtr;
+          chartyp:      StrPtr;
+          cardtyp:      StrPtr;
+          cardinttyp:   StrPtr;
+          inttyp:       StrPtr;
+          bitstyp:      StrPtr;
+          lcardtyp:     StrPtr;
+          dbltyp:       StrPtr;
+          realtyp:      StrPtr;
+          lrltyp:       StrPtr;
+          proctyp:      StrPtr;
+          stringtyp:    StrPtr;
+          addrtyp:      StrPtr;
+          wordtyp:      StrPtr;
+          bytetyp:      StrPtr;
+
+          rngchk:       BOOLEAN;
+          ovflchk:      BOOLEAN;
+          stackchk:     BOOLEAN;
+          nilchk:       BOOLEAN;
+          databank:     BOOLEAN;
+
+  PROCEDURE ALLOCATE(VAR a: ADDRESS; n: CARDINAL);
+  PROCEDURE Available(): CARDINAL;
+  PROCEDURE CloseHeaps;
+  PROCEDURE CloseMainHeap;
+  PROCEDURE NewHeap;
+  PROCEDURE ResetHeap(a: ADDRESS);
+  PROCEDURE ResizeHeap;
+  PROCEDURE RevertToMainHeap;
+  PROCEDURE InitM2DM;
+
+END M2DM.
+ 

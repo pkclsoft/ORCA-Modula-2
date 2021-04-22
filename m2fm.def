@@ -1,0 +1,27 @@
+DEFINITION MODULE M2FM; (* Hermann Seiler 19.2.86 / 10.6.86 *)
+
+  (* Interface to the MC68881 Floating-Point Coprocessor *)
+  (* or to the MacIntosh Floating-Point Emulator SANE.   *)
+
+  FROM M2DM IMPORT StrPtr, Standard, aAdr;
+  FROM M2HM IMPORT Item;
+  FROM M2SM IMPORT Symbol;
+
+CONST
+  ExtendedSize  = 10;
+
+TYPE
+  FMonadic  =  [ Abs  .. NonStand ];
+  FDyadic   =  [ null .. geq ];
+
+
+  PROCEDURE SetfltMd  (VAR x: Item; fR: aAdr; ftyp : StrPtr);
+  PROCEDURE FMove     (VAR x, y : Item);
+  PROCEDURE LoadF     (VAR x : Item);
+  PROCEDURE FMonad    (op : FMonadic; VAR x : Item);
+  PROCEDURE FDyad     (op : FDyadic;  VAR x, y : Item);
+
+
+END M2FM.
+
+ 
