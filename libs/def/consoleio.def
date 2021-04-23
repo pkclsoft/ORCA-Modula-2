@@ -1,0 +1,160 @@
+DEFINITION MODULE ConsoleIO;
+
+FROM SYSTEM IMPORT
+  BYTE, WORD, ADR, ADDRESS;
+
+CONST
+  (*
+    Screen control codes
+  *)
+  scNULL          = 00C;
+  scSaveTextPort  = 01C;
+  scSetPortSize   = 02C;
+  scClearFromBOL  = 03C;
+  scPopTextPort   = 04C;
+  scHorizScroll   = 05C;
+  scSetVertPos    = 06C;
+  scRingBell      = 07C;
+  scBackspace     = 10C;
+  scTab           = 11C;
+  scLineFeed      = 12C;
+  scClearToEOP    = 13C;
+  scClearAndHome  = 14C;
+  scReturn        = 15C;
+  scSetNormal     = 16C;
+  scSetInverse    = 17C;
+  scDLESpaceExp   = 20C;
+  scSet40Columns  = 21C;
+  scSet80Columns  = 22C;
+  scClearFromBOP  = 23C;
+  scSetHorizPos   = 24C;
+  scSetCursorMove = 25C;
+  scScrollDown    = 26C;
+  scScrollUp      = 27C;
+  scDisableMouse  = 30C;
+  scHome          = 31C;
+  scClearLine     = 32C;
+  scEnableMouse   = 33C;
+  scCursorRight   = 34C;
+  scClearEOL      = 35C;
+  scGotoXY        = 36C;
+  scCursorUp      = 37C;
+
+TYPE
+  aTextPortRec =
+    RECORD
+      ch:           BYTE;
+      cv:           BYTE;
+      windLeft:     BYTE;
+      windTop:      BYTE;
+      windRight:    BYTE;
+      windBottom:   BYTE;
+      windWidth:    BYTE;
+      windLength:   BYTE;
+      consWrap:     BYTE;
+      consAdvance:  BYTE;
+      consLF:       BYTE;
+      consScroll:   BYTE;
+      consVideo:    BYTE;
+      consDLE:      BYTE;
+      consMouse:    BYTE;
+      consFill:     BYTE;
+    END;
+  pTextPortRec = POINTER TO aTextPortRec;
+
+  aInputPortRec = 
+    RECORD
+      fillChar:     BYTE;
+      defCursor:    BYTE;
+      cursorMode:   BYTE;
+      beepFlag:     BYTE;
+      entryType:    BYTE;
+      exitType:     BYTE;
+      lastChar:     BYTE;
+      lastMod:      BYTE;
+      lastTermChar: BYTE;
+      lastTermMod:  BYTE;
+      cursorPos:    BYTE;
+      inputLength:  BYTE;
+      inputField:   BYTE;
+      originH:      BYTE;
+      originX:      WORD;
+      originV:      BYTE;
+    END;
+  pInputPortRec = POINTER TO aInputPortRec;
+
+PROCEDURE DisposePort(VAR port: pTextPortRec);
+(*
+  OPERATION:
+    Will dispose of any memory used by the port.  If successful, it sets
+    "port" to NIL.
+
+    Use this when you are finished with a port record that was created using
+    NewPort;
+*)
+
+PROCEDURE GetTextPort(VAR consoleTextPort: aTextPortRec);
+(*
+  OPERATION:
+    Copies the current text ports details to the supplied text port record.
+*)
+
+PROCEDURE GotoXY(x, y: CARDINAL);
+(*
+  OPERATION:
+    Places the cursor at the specified coordinates.
+
+    Warning: No check is made to ensure that the co-ordinates fit within the
+    current text port. The console driver should do that.
+*)
+
+PROCEDURE NewPort(top:    CARDINAL;
+                  left:   CARDINAL;
+                  length: CARDINAL;
+                  width:  CARDINAL): pTextPortRec;
+(*
+  OPERATION:
+    Creates a new text port with the specified dimensions, and returns a 
+    pointer to the appropriate text port record for manipulation.
+
+    If the port record is no longer required, then use DisposePort to free
+    any memory used by the port.
+*)
+
+PROCEDURE ReadChar(VAR ch: CHAR; VAR OK: BOOLEAN);
+(*
+  OPERATION:
+    Attempt to read a character from the console.  If no character is read,
+    then OK returns FALSE.
+
+    Note: No cursor is displayed.
+*)
+
+PROCEDURE SetReadMode(mode: CARDINAL);
+(*
+  OPERATION:
+    Set the current read mode to that specified.
+*)
+
+PROCEDURE SetTextPort(consoleTextPort: pTextPortRec);
+(*
+  OPERATION:
+    Change the current text port to the dimensions and status as specified
+    by "consoleTextPort".
+*)
+
+PROCEDURE WriteChar(buff: CHAR);
+(*
+  OPERATION:
+    Write one character to the current text port at the cursor position.
+*)
+
+PROCEDURE WriteNChars(buff: ADDRESS; count: CARDINAL);
+(*
+  OPERATION:
+    Write "count" characters from "buff" to the current text port.
+
+    Note: Buff may contain control sequences.
+*)
+
+END ConsoleIO.

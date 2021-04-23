@@ -1,0 +1,356 @@
+(*$NoImp*)
+DEFINITION MODULE MiscToolSet;
+(*
+  Miscellaneous Tool Set Interface File
+*)
+
+FROM Common IMPORT
+  String255Ptr;
+FROM MemoryManager IMPORT
+  Handle;
+FROM SYSTEM IMPORT
+  ADDRESS, BYTE;
+
+CONST
+  sbAlertStage0         = 0000H;
+  sbAlertStage1         = 0001H;
+  sbAlertStage2         = 0002H;
+  sbAlertStage3         = 0003H;
+  sbOutsideWindow       = 0004H;
+  sbOperationComplete   = 0005H;
+  sbBadKeypress         = 0008H;
+  sbBadInputValue       = 0009H;
+  sbInputFieldFull      = 000AH;
+  sbOperationImpossible = 000BH;
+  sbOperationFailed     = 000CH;
+  sbGSOStoP8            = 0011H;
+  sbP8ToGSOS            = 0012H;
+  sbDiskInserted        = 0013H;
+  sbDiskEjected         = 0014H;
+  sbSystemShutdown      = 0015H;
+  sbDiskRequest         = 0030H;
+  sbSystemStartup       = 0031H;
+  sbSystemRestart       = 0032H;
+  sbBadDisk             = 0033H;
+  sbKeyClick            = 0034H;
+  sbReturnKey           = 0035H;
+  sbSpaceKey            = 0036H;
+  sbWhooshOpen          = 0040H;
+  sbWhooshClosed        = 0041H;
+  sbFillTrash           = 0042H;
+  sbEmptyTrash          = 0043H;
+  sbAlertWindow         = 0044H;
+  sbAlertStop           = 0045H;
+  sbAlertNote           = 0046H;
+  sbAlertCaution        = 0047H;
+  sbScreenBlanking      = 0060H;
+  sbScreenUnblanking    = 0061H;
+  sbYouHaveMail         = 0100H;
+  sbErrorWindowBase     = 0E00H;
+  sbErrorWindowOther    = 0EFFH;
+
+TYPE
+  aQueueHeader =
+    RECORD
+      reserved1:  LONGINT;
+      reserved2:  CARDINAL;
+      signature:  CARDINAL;    (* set to 0A55AH *)
+    END;
+  pQueueHeader = POINTER TO aQueueHeader;
+
+  aIntStateRecord =
+    RECORD
+      irqA:       CARDINAL;
+      irqX:       CARDINAL;
+      irqY:       CARDINAL;
+      irqS:       CARDINAL;
+      irqD:       CARDINAL;
+      irqP:       BYTE;
+      irqDB:      BYTE;
+      irqe:       BYTE;
+      irqK:       BYTE;
+      irqPC:      CARDINAL;
+      irqstate:   BYTE;
+      irqshadow:  CARDINAL;
+      irqmslot:   BYTE;
+    END;
+  pIntStateRecord = POINTER TO aIntStateRecord;
+
+  aTextFlagBit = (fLang0, fLang1, fLang2, fReserved3, fReserved4, fReserved5,
+                  fReserved6, fReserved7, fReserved8, fReserved9, fReserved10,
+                  fReserved11, fPassThru, fForceLanguage, fAllowLongerSubs,
+                  fAllowMouseText);
+  aTextFlag = SET OF aTextFlagBit;
+
+  aVersionString = ARRAY [0..9] OF CHAR;
+
+PROCEDURE MTBootInit; TOOL 0103H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE MTStartUp; TOOL 0203H;
+
+PROCEDURE MTShutDown; TOOL 0303H;
+
+PROCEDURE MTVersion(): CARDINAL; TOOL 0403H;
+
+PROCEDURE MTReset; TOOL 0503H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE MTStatus(): BOOLEAN; TOOL 0603H;
+
+PROCEDURE AddToQueue(newEntry, headerPtr: pQueueHeader); TOOL 2E03H;
+
+PROCEDURE AlertMessage(msgTable:  ADDRESS; 
+                       msgNum:    CARDINAL;
+                       subs:      ADDRESS): CARDINAL; TOOL 3E03H;
+
+PROCEDURE ClampMouse(xMinClamp: CARDINAL;
+                     xMaxClamp: CARDINAL;
+                     yMinClamp: CARDINAL;
+                     yMaxClamp: CARDINAL); TOOL 1C03H;
+
+PROCEDURE ClearMouse; TOOL 1B03H;
+
+PROCEDURE ClrHeartBeat; TOOL 1403H;
+
+PROCEDURE ConvSeconds(convVerb: CARDINAL; 
+                      seconds:  LONGINT;
+                      datePtr:  ADDRESS): LONGINT; TOOL 3703H;
+
+PROCEDURE DeleteFromQueue(newEntry, headerPtr: pQueueHeader); TOOL 2F03H;
+
+PROCEDURE DeleteID(IDTag: CARDINAL); TOOL 2103H;
+
+PROCEDURE DelHeartBeat(taskPtr: ADDRESS); TOOL 1303H;
+
+PROCEDURE DoSysPrefs(bitsToClear: CARDINAL;
+                     bitsToSet:   CARDINAL): CARDINAL; TOOL 3F03H;
+
+PROCEDURE FWEntry(aRegValue:    CARDINAL;
+                  xRegValue:    CARDINAL;
+                  yRegValue:    CARDINAL;
+                  eModeEntryPt: CARDINAL); TOOL 2403H;
+(*
+  FWEntry returns 4 CARDINALs.  Use the following:
+
+  INLINE(PHA, PHA, PHA, PHA);  (* make space for result *)
+  FWEntry(aval, xval, yval, epoint);  (* do the call *)
+  INLINE(PLA, PLX);   (* get first two words *)
+  GETREG(Acc, yval);  (* place in variables *)
+  GETREG(XReg, xval);
+  INLINE(PLA, PLX);   (* get second two words *)
+  GETREG(Acc, aval);  (* place in variables *)
+  GETREG(XReg, status);
+*)
+
+PROCEDURE GetAbsClamp; TOOL 2B03H;
+(*
+  GetAbsClamp returns 4 CARDINALs - Use the following:
+
+  INLINE(PHA, PHA, PHA, PHA);  (* make space for result *)
+  GetMouseClamp;
+  INLINE(PLA, PLX);         (* get first two words *)
+  GETREG(Acc, yMaxClamp);   (* place in variables *)
+  GETREG(XReg, yMinClamp);
+  INLINE(PLA, PLX);         (* get second two words *)
+  GETREG(Acc, xMaxClamp);   (* place in variables *)
+  GETREG(XReg, xMinClamp);
+*)
+
+PROCEDURE GetAddr(refNum: CARDINAL): ADDRESS; TOOL 1603H;
+
+PROCEDURE GetCodeResConverter(): ADDRESS; TOOL 3403H;
+
+PROCEDURE GetInterruptState(VAR interruptState: aIntStateRecord;
+                                bytesDesired:   CARDINAL); TOOL 3103H;
+
+PROCEDURE GetIntStateRecSize(): CARDINAL; TOOL 3203H;
+
+PROCEDURE GetIRQEnable(): CARDINAL; TOOL 2903H;
+
+PROCEDURE GetMouseClamp; TOOL 1D03H;
+(*
+  GetMouseClamp returns 4 CARDINALs - Use the following:
+
+  INLINE(PHA, PHA, PHA, PHA);  (* make space for result *)
+  GetMouseClamp;
+  INLINE(PLA, PLX);         (* get first two words *)
+  GETREG(Acc, yMaxClamp);   (* place in variables *)
+  GETREG(XReg, yMinClamp);
+  INLINE(PLA, PLX);         (* get second two words *)
+  GETREG(Acc, xMaxClamp);   (* place in variables *)
+  GETREG(XReg, xMinClamp);
+*)
+
+PROCEDURE GetNewID(IDTag: CARDINAL): CARDINAL; TOOL 2003H;
+
+PROCEDURE GetTick(): LONGINT; TOOL 2503H;
+
+PROCEDURE GetVector(vectorRefNum: CARDINAL): ADDRESS; TOOL 1103H;
+
+PROCEDURE InitMouse(mouseSlot: CARDINAL); TOOL 1803H;
+
+PROCEDURE IntSource(srcRefNum: CARDINAL); TOOL 2303H;
+
+PROCEDURE HomeMouse; TOOL 1A03H;
+
+PROCEDURE Munger(    destPtr: Handle;
+                 VAR destLen: CARDINAL;
+                     targPtr: ADDRESS;
+                     targLen: CARDINAL; 
+                     replPtr: ADDRESS;
+                     replLen: CARDINAL;
+                     padPtr:  ADDRESS): CARDINAL; TOOL 2803H;
+
+PROCEDURE PackBytes(    startHandle:  Handle;
+                    VAR size:         CARDINAL;
+                        bufferPtr:    ADDRESS;
+                        bufferSize:   CARDINAL): CARDINAL; TOOL 2603H;
+
+PROCEDURE PosMouse(xPos, yPos: CARDINAL); TOOL 1E03H;
+
+PROCEDURE ReadASCIITime(bufferAddress: ADDRESS); TOOL 0F03H;
+
+PROCEDURE ReadBRam(bufferAddress: ADDRESS); TOOL 0A03H;
+
+PROCEDURE ReadBParam(paramRefNum: CARDINAL): CARDINAL; TOOL 0C03H;
+
+PROCEDURE ReadMouse; TOOL 1703H;
+(*
+  ReadMouse returns 2 CARDINALs and 2 BYTEs - Use the following:
+
+  INLINE(PHA, PHA, PHA);  (* make space for result *)
+  ReadMouse;
+  INLINE(PLA, PLX);         (* get first two words *)
+  GETREG(Acc, statusMode);  (* place in variables *)
+  GETREG(XReg, yPosition);
+  INLINE(PLA);              (* get last word *)
+  GETREG(Acc, xPosition);   (* place in variables *)
+*)
+
+PROCEDURE ReadMouse2; TOOL 3303H;
+(*
+  ReadMouse2 returns 3 CARDINALs - Use the following:
+
+  INLINE(PHA, PHA, PHA);  (* make space for result *)
+  ReadMouse2;
+  INLINE(PLA, PLX);         (* get first two words *)
+  GETREG(Acc, statusMode);  (* place in variables *)
+  GETREG(XReg, yPosition);
+  INLINE(PLA);              (* get last word *)
+  GETREG(Acc, xPosition);   (* place in variables *)
+*)
+
+PROCEDURE ReadTimeHex; TOOL 0D03H;
+(*
+  NOTE that ReadTimeHex returns 8 BYTEs.  M2 can't handle this, so if you
+  really want to use it, try the following:
+
+  PROCEDURE MyReadTimeHex(VAR weekDay:  CARDINAL;
+                          VAR month:    CARDINAL;
+                          VAR day:      CARDINAL;
+                          VAR year:     CARDINAL;
+                          VAR hour:     CARDINAL;
+                          VAR minute:   CARDINAL;
+                          VAR second:   CARDINAL);
+  TYPE
+    aResult =
+      RECORD
+        CASE :BOOLEAN OF
+          TRUE:   firstmsw:         CARDINAL;
+                  firstlsw:         CARDINAL;
+                  secondmsw:        CARDINAL;
+                  secondlsw:        CARDINAL;
+        | FALSE:  null, weekDay:    BYTE;
+                  day, month:       BYTE;
+                  hour, year:       BYTE;
+                  second, minute:   BYTE;
+        END;
+  VAR
+    result: aResult;
+  BEGIN
+    INLINE(PHA, PHA, PHA, PHA); (* Push eight bytes onto the stack *)
+    ReadTimeHex;
+    INLINE(PLA, PLX);
+    GETREG(Acc, result.secondlsw);
+    GETREG(XReg, result.secondmsw);
+    INLINE(PLA, PLX);
+    GETREG(Acc, result.firstlsw);
+    GETREG(XReg, result.firstmsw);
+
+    weekDay := ORD(result.weekDay);
+    month := ORD(result.month);
+    day := ORD(result.day);
+    year := ORD(result.year);
+    hour := ORD(result.hour);
+    minute := ORD(result.minute);
+    second := ORD(result.second);
+  END MyReadTimeHex;
+*)
+
+PROCEDURE ScanDevices(): CARDINAL; TOOL 3D03H;
+
+PROCEDURE ServeMouse(): CARDINAL; TOOL 1F03H;
+
+PROCEDURE SetAbsClamp(xMinClamp:  CARDINAL;
+                      xMaxClamp:  CARDINAL;
+                      yMinClamp:  CARDINAL;
+                      yMaxClamp:  CARDINAL); TOOL 2A03H;
+
+PROCEDURE SetHeartBeat(taskPtr: ADDRESS); TOOL 1203H;
+
+PROCEDURE SetInterruptState(VAR interruptState: aIntStateRecord;
+                                bytesDesired:   CARDINAL); TOOL 3003H;
+
+PROCEDURE SetMouse(mouseMode: CARDINAL); TOOL 1903H;
+
+PROCEDURE SetVector(vectorRefNum: CARDINAL; vectorPtr: ADDRESS); TOOL 1003H;
+
+PROCEDURE ShowBootInfo(string: ADDRESS; icon: ADDRESS); TOOL 3C03H;
+
+PROCEDURE StatusID(IDTag: CARDINAL); TOOL 2203H;
+
+PROCEDURE StringToText(flags:     aTextFlag; 
+                       textPtr:   ADDRESS;
+                       textLen:   CARDINAL;
+                       resultPtr: ADDRESS); TOOL 3B03H;
+(*
+  StringToText Returns 2 words - Use the following:
+
+  INLINE(PHA, PHA);
+  StringToText(flags, ADR(text), textLen, ADR(result));
+  INLINE(PLA, PLX);
+  GETREG(Acc, printableLength);
+  GETREG(XReg, resultFlags);
+*)
+
+PROCEDURE SysBeep; TOOL 2C03H;
+
+PROCEDURE SysBeep2(beepType:  CARDINAL); TOOL 3803H;
+
+PROCEDURE SysFailMgr(errorCode:   CARDINAL;
+                     failString:  String255Ptr); TOOL 1503H;
+
+PROCEDURE UnPackBytes(    bufferPtr:    ADDRESS;
+                          bufferSize:   CARDINAL;
+                          startHandle:  Handle;
+                      VAR size:         CARDINAL): CARDINAL; TOOL 2703H;
+
+PROCEDURE VersionString(    flags:      CARDINAL;
+                            theVersion: LONGINT;
+                        VAR stringPtr:  aVersionString); TOOL 3903H;
+
+PROCEDURE WaitUntil(delayFrom:    CARDINAL; 
+                    delayAmount:  CARDINAL): CARDINAL; TOOL 3A03H;
+
+PROCEDURE WriteBParam(theData, paramRefNum: CARDINAL); TOOL 0B03H;
+
+PROCEDURE WriteBRam(bufferAddress: ADDRESS); TOOL 0903H;
+
+PROCEDURE WriteTimeHex(monthday, yearhour, minutesecond: CARDINAL); TOOL 0E03H;
+
+END MiscToolSet.

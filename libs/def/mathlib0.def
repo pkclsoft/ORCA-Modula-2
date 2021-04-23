@@ -1,0 +1,12 @@
+(*$NoImp*)  (* prevents the necessity for an initialisation procedure *)
+DEFINITION MODULE MathLib0;
+
+PROCEDURE sqrt(x: REAL): REAL;
+PROCEDURE exp(x: REAL): REAL;
+PROCEDURE ln(x: REAL): REAL;
+PROCEDURE sin(x: REAL): REAL;
+PROCEDURE cos(x: REAL): REAL;
+PROCEDURE arctan(x: REAL): REAL;
+PROCEDURE entier(x: REAL): INTEGER;
+
+END MathLib0.

@@ -1,0 +1,300 @@
+(*$NoImp*)
+DEFINITION MODULE ResourceManager;
+
+(*
+  Resource Manager Interface File
+*)
+
+FROM GSOSInterface IMPORT
+  GSOSInString, AccessSet;
+FROM MemoryManager IMPORT 
+  Handle;
+FROM SYSTEM IMPORT 
+  ADDRESS, BYTE;
+
+CONST
+  (* 
+    Resource Manager Error Codes
+  *)
+  resForkUsed     = 1E01H;  (* resource fork not empty                     *)
+  resBadFormat    = 1E02H;  (* format of resource fork is unknown          *)
+  resNoConverter  = 1E03H;  (* no converter logged in for resource         *)
+  resNoCurFile    = 1E04H;  (* there are no current open resource files    *)
+  resDupID        = 1E05H;  (* ID is already used                          *)
+  resNotFound     = 1E06H;  (* resource was not found                      *)
+  resFileNotFound = 1E07H;  (* resource file not found                     *)
+  resBadAppID     = 1E08H;  (* user ID not found, call ResourceStartup     *)
+  resNoUniqueID   = 1E09H;  (* a unique ID was not found                   *)
+  resIndexRange   = 1E0AH;  (* index is out of range                       *)
+  resSysIsOpen    = 1E0BH;  (* system file is already open                 *)
+  resHasChanged   = 1E0CH;  (* resource changed - operation can't be done  *)
+  resDifConverter = 1E0DH;  (* different converter logged for resrc type   *)
+  resInvalidShutDown = 1E0FH; (* cannot shutdown the resource manager      *)
+  resDupStartUp   = 1E12H;  (* resource manager already started            *)
+  resInvalidTypeOrID = 1E13H; (* resource type or ID is zero               *)
+  resForkFreeListInvalid = 1E42H; (* fatal error                           *)
+  
+TYPE
+  (* 
+    Resource flag values
+
+    NOTE:
+      To prevent conflict with aAttribute in MemoryManager.Def, each
+      attribute is preceded by "res" instead of "attr".
+  *)
+  ResourceAttribute  = (resReserved0, resReserved1, resPage, resNoSpec, 
+                         resNoCross, resChanged, resPreLoad, resProtected,
+                         resPurge8, resPurge9, resAbsLoad, resConverter, 
+                         resReserved12, resReserved13, resFixed, resLocked);
+  ResourceAttributeSet = SET OF ResourceAttribute;
+  ResourceAttributeSetPtr = POINTER TO ResourceAttributeSet;
+
+CONST
+  (* 
+    mask for NewHandle for resource memory
+  *)
+  resMemAttr  = ResourceAttributeSet{resPage, resNoSpec, resNoCross,
+                                      resPurge8, resPurge9, resFixed,
+                                      resLocked};
+
+  (*
+    System file ID
+  *)
+  sysFileID       = 0001H;  (* file ID of system resource file *)
+
+TYPE
+  (*
+    Map flag values
+  *)
+  MapFlag = (mapReserved0, mapChanged, mapReserved2, mapReserved3, 
+              mapReserved4, mapReserved5, mapReserved6, mapReserved7,
+              mapReserved8, mapReserved9, mapReserved10, mapReserved11, 
+              mapReserved12, mapReserved13, mapReserved14, mapReserved15);
+  MapFlagSet = SET OF MapFlag;
+
+  ResourceID   = LONGCARD;
+  ResourceType = CARDINAL;
+
+  ResourceHeaderRecord =
+    RECORD
+      rFileVersion:  LONGCARD;
+      rFileToMap:    LONGCARD;
+      rFileMapSize:  LONGCARD;
+      rFileMemo:     ARRAY [0..127] OF BYTE;
+    END;
+
+  FreeBlockRecord = 
+    RECORD
+      blkOffset:  LONGCARD;
+      blkSize:    LONGCARD;
+    END;
+
+  ResourceReferenceRecord =
+    RECORD
+      resType:    ResourceType;
+      resID:      ResourceID;
+      resOffset:  LONGCARD;
+      resAttr:    ResourceAttributeSet;
+      resSize:    LONGCARD;
+      resHandle:  Handle;
+    END;
+  ResourceReferenceRecordPtr = POINTER TO ResourceReferenceRecord;
+
+  ResourceMapHand  = POINTER TO ResourceMapPtr;
+  ResourceMapPtr  = POINTER TO ResourceMap;
+  ResourceMap  =
+    RECORD
+      mapNext:          ResourceMapHand;
+      mapFlag:          MapFlagSet;
+      mapOffset:        LONGCARD;
+      mapSize:          LONGCARD;
+      mapToIndex:       CARDINAL;
+      mapFileNum:       CARDINAL;
+      mapID:            CARDINAL;
+      mapIndexSize:     LONGCARD;
+      mapIndexUsed:     LONGCARD;
+      mapFreeListSize:  CARDINAL;
+      mapFreeListUsed:  CARDINAL;
+      (*
+        Set the array size for your application.
+      *)
+      mapFreeList:      ARRAY [0..0] OF FreeBlockRecord;
+      mapIndex:         ARRAY [0..0] OF ResourceReferenceRecord;
+    END;
+
+  ResourceSpec =
+    RECORD
+      resourceType: ResourceType;
+      resourceID:   ResourceID;
+      fileID:       CARDINAL;
+    END;
+  (*
+    If you want the "fileID" field to be filled in by the "MatchResourceHandle"
+    tool call, then set bit 31 of the ResourceSpec address to 1.
+  *)
+  ResourceSpecPtr = POINTER TO ResourceSpec;
+
+  ResourceConverterProc   = PROCEDURE(CARDINAL, 
+                                      ADDRESS, 
+                                      ResourceReferenceRecordPtr): LONGCARD;
+
+  (*
+    Map flag values
+  *)
+  LogFlag = (logAction, logList, logReserved2, logReserved3, 
+             logReserved4, logReserved5, logReserved6, logReserved7,
+             logReserved8, logReserved9, logReserved10, logReserved11, 
+             logReserved12, logReserved13, logReserved14, logReserved15);
+  LogFlagSet = SET OF LogFlag;
+
+  ResourceName =
+    RECORD
+      length: BYTE;
+      text:   ARRAY [0..254] OF CHAR;
+    END;
+  ResourceNamePtr = POINTER TO ResourceName;
+
+PROCEDURE ResourceBootInit; TOOL 011EH;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE ResourceStartup(myID: CARDINAL); TOOL 021EH;
+
+PROCEDURE ResourceShutdown; TOOL 031EH;
+
+PROCEDURE ResourceVersion(): CARDINAL; TOOL 041EH;
+
+PROCEDURE ResourceReset; TOOL 051EH;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE ResourceStatus(): BOOLEAN; TOOL 061EH;
+
+PROCEDURE AddResource(resourceHandle: Handle; 
+                      resourceAttr:   ResourceAttributeSet;
+                      resourceType:   ResourceType;
+                      resourceID:     ResourceID); TOOL 0C1EH;
+
+PROCEDURE CloseResourceFile(fileID: CARDINAL); TOOL 0B1EH;
+
+PROCEDURE CompactResourceFile(flags:  BITSET; (* must be {} *)
+                              fileID: CARDINAL); TOOL 2F1EH;
+
+PROCEDURE CountResources(resourceType: ResourceType): LONGCARD; TOOL 221EH;
+
+PROCEDURE CountTypes(): CARDINAL; TOOL 201EH;
+
+PROCEDURE CreateResourceFile(    auxType:     LONGCARD;
+                                 fileType:    CARDINAL; 
+                                 fileAccess:  CARDINAL;
+                             VAR fileName:    GSOSInString); TOOL 091EH;
+
+PROCEDURE DetachResource(resourceType:  ResourceType; 
+                         resourceID:    ResourceID); TOOL 181EH;
+
+PROCEDURE GetCurResourceApp(): CARDINAL; TOOL 141EH;
+
+PROCEDURE GetCurResourceFile(): CARDINAL; TOOL 121EH;
+
+PROCEDURE GetIndResource(resourceType:  ResourceType; 
+                         resourceIndex: LONGCARD): ResourceID; TOOL 231EH;
+
+PROCEDURE GetIndType(typeIndex: CARDINAL): ResourceType; TOOL 211EH;
+
+PROCEDURE GetMapHandle(fileID: CARDINAL): ResourceMapHand; TOOL 261EH;
+
+PROCEDURE GetOpenFileRefNum(fileID: CARDINAL): CARDINAL; TOOL 1F1EH;
+
+PROCEDURE GetResourceAttr(resourceType: ResourceType; 
+                          resourceID:   ResourceID): ResourceAttributeSet; TOOL 1B1EH;
+
+PROCEDURE GetResourceSize(resourceType: ResourceType; 
+                          resourceID:   ResourceID): LONGCARD; TOOL 1D1EH;
+
+PROCEDURE HomeResourceFile(resourceType:  ResourceType; 
+                           resourceID:    ResourceID): CARDINAL; TOOL 151EH;
+
+PROCEDURE LoadAbsResource(loadAddress:  ADDRESS;
+                          maxSize:      LONGCARD;
+                          resourceType: ResourceType; 
+                          resourceID:   ResourceID): LONGCARD; TOOL 271EH;
+
+PROCEDURE LoadResource(resourceType:  ResourceType; 
+                       resourceID:    ResourceID): Handle; TOOL 0E1EH;
+
+PROCEDURE LoadResource2(flags:        CARDINAL;
+                        bufferPtr:    ResourceAttributeSetPtr;
+                        resourceType: ResourceType;
+                        resourceID:   ResourceID): Handle; TOOL 291EH;
+
+PROCEDURE MarkResourceChange(changeFlag:    BOOLEAN;
+                             resourceType:  ResourceType;
+                             resourceID:    ResourceID); TOOL 101EH;
+
+PROCEDURE MatchResourceHandle(VAR foundRec:       ResourceSpec;
+                                  resourceHandle: Handle); TOOL 1E1EH;
+(*
+  NOTE:
+    To obtain the fileID of the resource, set bit 31 of "foundRec".
+*)
+
+PROCEDURE OpenResourceFile(    openAccess: AccessSet;
+                               mapAddress: ResourceMapPtr;
+                           VAR fileName:   GSOSInString): CARDINAL; TOOL 0A1EH;
+
+PROCEDURE OpenResourceFileByID(openAccess:  AccessSet;
+                               userID:      CARDINAL):  CARDINAL; TOOL 2E1EH;
+
+PROCEDURE ReleaseResource(purgeLevel:   CARDINAL; 
+                          resourceType: ResourceType;
+                          resourceID:   ResourceID); TOOL 171EH;
+
+PROCEDURE RemoveResource(resourceType:  ResourceType; 
+                         resourceID:    ResourceID); TOOL 0F1EH;
+
+PROCEDURE ResourceConverter(converterProc:  ResourceConverterProc; 
+                            resourceType:   ResourceType;
+                            logFlags:       LogFlagSet); TOOL 281EH;
+
+PROCEDURE RMFindNamedResource(    rType:      ResourceType;
+                                  namePtr:    ResourceNamePtr;
+                              VAR fileNumPtr: CARDINAL): ResourceID; TOOL 2A1EH;
+
+PROCEDURE RMGetResourceName(    rType:    ResourceType;
+                                rID:      ResourceID;
+                            VAR namePtr:  ResourceName); TOOL 2B1EH;
+
+PROCEDURE RMLoadNamedResource(rType:    ResourceType;
+                              namePtr:  ResourceNamePtr): Handle; TOOL 2C1EH;
+
+PROCEDURE RMSetResourceName(rType:    ResourceType;
+                            rID:      ResourceID;
+                            namePtr:  ResourceNamePtr); TOOL 2D1EH;
+
+PROCEDURE SetCurResourceApp(myID: CARDINAL); TOOL 131EH;
+
+PROCEDURE SetCurResourceFile(fileID: CARDINAL); TOOL 111EH;
+
+PROCEDURE SetResourceAttr(resourceAttr: ResourceAttributeSet; 
+                          resourceType: ResourceType;
+                          resourceID:   ResourceID); TOOL 1C1EH;
+
+PROCEDURE SetResourceFileDepth(searchDepth: CARDINAL): CARDINAL; TOOL 251EH;
+
+PROCEDURE SetResourceID(newID:        ResourceID; 
+                        resourceType: ResourceType; 
+                        currentID:    ResourceID); TOOL 1A1EH;
+
+PROCEDURE SetResourceLoad(readFlag: INTEGER): INTEGER; TOOL 241EH;
+
+PROCEDURE UniqueResourceID(IDrange:       CARDINAL; 
+                           resourceType:  ResourceType): ResourceID; TOOL 191EH;
+
+PROCEDURE UpdateResourceFile(fileID: CARDINAL); TOOL 0D1EH;
+
+PROCEDURE WriteResource(resourceType: ResourceType; 
+                        resourceID:   ResourceID); TOOL 161EH;
+
+END ResourceManager.

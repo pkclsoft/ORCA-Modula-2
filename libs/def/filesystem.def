@@ -1,0 +1,110 @@
+DEFINITION MODULE FileSystem;
+
+FROM GSOSInterface IMPORT
+  GSOSInString;
+FROM SYSTEM IMPORT
+  ADDRESS, WORD;
+
+TYPE
+  Response = (done, notdone);
+
+  File =
+    RECORD
+      open:       BOOLEAN;
+      fileRefNum: CARDINAL;       (* GS/OS file reference number *)
+      res:        Response;       (* response to last file activity *)
+      eof:        BOOLEAN;        (* TRUE if true eof is detected *)
+      nameString: GSOSInString;   (* the files full pathname *)
+    END;
+
+PROCEDURE Lookup(VAR f: File; filename: ARRAY OF CHAR; new: BOOLEAN);
+(*
+  OPERATION:
+    Open the file specified by "filename".  If "new" is TRUE, and the file
+    does not exist, then create the file before opening it.  IF "new" is
+    FALSE, and no file exists, then return a response of notDone.
+*)
+
+PROCEDURE Close(VAR f: File);
+(*
+  OPERATION:
+    Close the specified file.
+*)
+
+PROCEDURE Delete(VAR f: File);
+(*
+  OPERATION:
+    Delete the specified file.
+  NOTE:
+    This requires the file to have been opened first.  To avoid this necessity,
+    refer to the module EZFileSystem.
+*)
+
+PROCEDURE Rename(VAR f: File; filename: ARRAY OF CHAR);
+(*
+  OPERATION:
+    Rename the specified file to "filename".
+  NOTE:
+    This requires the file to have been opened first.  To avoid this necessity,
+    refer to the module EZFileSystem.
+*)
+
+PROCEDURE SetPos(VAR f: File; highpos, lowpos: CARDINAL);
+(*
+  OPERATION:
+    Set the current position in the specified file.
+  NOTE:
+    For a simpler method of setting the position (i.e. with a longint)
+    refer to the module EZFileSystem.
+*)
+
+PROCEDURE GetPos(VAR f: File; VAR highpos, lowpos: CARDINAL);
+(*
+  OPERATION:
+    Get the current position in the specified file.
+  NOTE:
+    For a simpler method of getting the position (i.e. with a longint)
+    refer to the module EZFileSystem.
+*)
+
+PROCEDURE Length(VAR f: File; VAR highpos, lowpos: CARDINAL);
+(*
+  OPERATION:
+    Get the length (in bytes) of the specified file.
+  NOTE:
+    For a simpler method of getting the file length (i.e. with a longint)
+    refer to the module EZFileSystem.
+*)
+
+PROCEDURE ReadWord(VAR f: File; VAR w: WORD);
+(*
+  OPERATION:
+    Read two bytes from the specified file, storing them as a WORD in "w".
+*)
+
+PROCEDURE WriteWord(VAR f: File; w: WORD);
+(*
+  OPERATION:
+    Write a WORD to the specified file.  They are written LSB, MSB.
+*)
+
+PROCEDURE ReadChar(VAR f: File; VAR ch: CHAR);
+(*
+  OPERATION:
+    Read a character from the specified file.
+*)
+
+PROCEDURE WriteChar(VAR f: File; ch: CHAR);
+(*
+  OPERATION:
+    Write a character to the specified file.
+*)
+
+(*
+  For more extended access to Modula-2 files, see the Module EZFileSystem,
+  which supplies a number of convience type procedures that simplify utility
+  type access to files.  It also supplies more extensive support for GS/OS 
+  while trying to maintain the access mechanism defined by this module.
+*)
+
+END FileSystem.

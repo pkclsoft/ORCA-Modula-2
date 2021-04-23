@@ -1,0 +1,274 @@
+DEFINITION MODULE M2Lib;
+
+FROM SYSTEM IMPORT
+  ADDRESS, WORD, BYTE;
+
+TYPE
+  aTerminateStatus = (tsOK, tsOverflow, tsSubrangeExceeded,
+                      tsOutOfMemory, tsUndefinedCase, tsDivideByZero,
+                      tsRangeError, tsHalt, tsNoReturnFromFunction,
+                      tsStackOverflow, tsUnexpectedCoRoutineExit,
+                      tsAddressOverflow);
+
+  aTerminationProcedure = PROCEDURE(ADDRESS, aTerminateStatus);
+
+  aCommandLine =
+    RECORD
+      shellID:  ARRAY [0..7] OF CHAR;
+      value:    ARRAY [0..255] OF CHAR;
+    END;
+  pCommandLine = POINTER TO aCommandLine;
+
+VAR
+  CommandLine:  pCommandLine;
+
+PROCEDURE CopyBytes(source, destination: ADDRESS; length: CARDINAL);
+(*
+  OPERATION:
+    Will copy "length" bytes from source to destination.  The procedure
+    internally handles the possibility of overlap, but does not handle the
+    possibility of either memory area crossing a bank boundary.  The actual
+    copy is done using a MVN or MVP instruction, so any conditions relating
+    to those instructions must be considered when using this procedure.
+
+    For a more comprehensive byte copy, use MemoryManager.BlockMove
+*)
+
+PROCEDURE CopyString(srcLen:      CARDINAL;
+                     source:      ADDRESS;
+                     length:      CARDINAL;
+                     destination: ADDRESS);
+(*
+  OPERATION:
+    Slower than CopyBytes, this procedure copies a range of bytes from
+    "source" to "destination".  The maximum number of bytes is specified by
+    "length".  If a "nul" character is detected, or the end of the "source"
+    string is reached during the copy, then the copy is terminated.
+
+    Thus the procedure may be used to copy any Modula-2 string with maximum
+    length as specified by "length".
+*)
+
+PROCEDURE CompareBytes(first, second: ADDRESS; len: CARDINAL): INTEGER;
+(*
+  OPERATION:
+    This procedure compares two byte ranges, and returns a result, indicating
+    whether:
+
+      -1  "first" is less than "second"
+       0  "first" is the same as "second"
+       1  "first" is greater than "second"
+*)
+
+PROCEDURE CompareStr(first, second: ARRAY OF CHAR): INTEGER;
+(*
+  OPERATION:
+    This procedure compares the two strings, and returns a result, indicating
+    whether:
+
+      -1  "first" is less than "second"
+       0  "first" is the same as "second"
+       1  "first" is greater than "second"
+*)
+
+PROCEDURE FormatReal(x: REAL; n, k: CARDINAL; VAR str: ARRAY OF CHAR);
+(*
+  OPERATION:
+    Convert the REAL number x into a string with max characters n, and
+    k digits after the decimal point.  If n is zero, then the number is
+    converted to exponential format.
+*)
+
+PROCEDURE FormatLongReal(x: LONGREAL; n, k: CARDINAL; VAR str: ARRAY OF CHAR);
+(*
+  OPERATION:
+    Convert the LONGREAL number x into a string with max characters n, and
+    k digits after the decimal point.  If n is zero, then the number is
+    converted to exponential format.
+*)
+
+PROCEDURE UserID(): CARDINAL;
+(*
+  OPERATION:
+    Will return the currently running applications UserID.  Note that this is
+    not exactly the same as that provided by a MMStartup Call.  The M2 runtime
+    uses the MMStartup result to maintain runtime data.  It ORs it with
+    0100H to for a auxID that is then used for normal application usage such
+    as allocating dynamic memory.
+*)
+
+PROCEDURE ToolError(): CARDINAL;
+(*
+  OPERATION:
+    Will return the return status from the last TOOL or GS/OS call.
+*)
+
+PROCEDURE HighWORD(long: LONGINT): CARDINAL;
+(*
+  OPERATION:
+    Returns the high word of the supplied LONGINT;
+*)
+
+PROCEDURE LoWORD(long: LONGINT): CARDINAL;
+(*
+  OPERATION:
+    Returns the low word of the supplied LONGINT;
+*)
+
+PROCEDURE LongWORD(loword, highword: WORD): LONGINT;
+(*
+  OPERATION:
+    Returns the a LONGINT formed by the two CARDINAL's.
+*)
+
+PROCEDURE PutChar(ch: CHAR);
+(*
+  OPERATION:
+    Provides a glue to the ORCA SysCharOut routine for using the standard IO 
+    routines.  Sends character to standard output.
+*)
+
+PROCEDURE PutCharToError(ch: CHAR);
+(*
+  OPERATION:
+    Provides a glue to the ORCA SysCharErrOut routine for using the standard IO 
+    routines.  Sends "ch" to error output.
+*)
+
+PROCEDURE GetChar(VAR ch: CHAR; VAR done: BOOLEAN);
+(*
+  OPERATION:
+    Provides a glue to the ORCA GetC routine for using the standard IO 
+    routines.
+*)
+
+PROCEDURE Terminate(reason: aTerminateStatus);
+(*
+  OPERATION:
+    Will terminate the execution of the current application with 'code' being
+    the reason.
+*)
+
+VAR
+  TermProc:         aTerminationProcedure;
+  StackTop:         CARDINAL;
+  StackBottom:      CARDINAL;
+  MasterID:         CARDINAL;
+  NDACode:          CARDINAL;
+
+CONST
+  maxLev            = 10;
+
+TYPE
+  aVRN              = [08H..17H];
+
+  (*
+    The format of aProcessDescriptor should not be changed without serious
+    consideration.  The procedures NEWPROCESS and TRANSFER in M2Lib
+    both (written in assembly) are hard coded to use this format, and thus
+    should be altered whenever this record is amended.
+  *)
+
+  aProcessDescriptor =
+    RECORD
+      stackTop:     CARDINAL;
+      stackBottom:  CARDINAL;
+      SRegister:    CARDINAL;
+      DRegister:    CARDINAL;
+      progCounter:  LONGCARD;
+      stackFrame:   CARDINAL;
+      display:      ARRAY [0..9] OF CARDINAL;
+      activated:    BOOLEAN;  (* NEVER EVER CHANGE THE LOCATION OF THIS FLAG *)
+                              (* WITHIN THE RECORD!  THE COMPILER GENERATES  *)
+                              (* CODE THAT ASSUMES IT'S POSITION IS FIXED.   *)
+    END;
+
+VAR
+  IntHandled:         BOOLEAN;
+  activeProcess:      ADDRESS;
+  Display:            ARRAY [1..maxLev] OF CARDINAL;
+  StackFramePointer:  CARDINAL;
+  CrashStackFrame:    CARDINAL;
+
+PROCEDURE NEWPROCESS(P: PROC; A: ADDRESS; n: CARDINAL; VAR p1: ADDRESS);
+(*
+  OPERATION:
+    This procedure provides the Modula-2 standard NEWPROCESS call.  It creates
+    a new process descriptor, and stores the relevant information within it in
+    preparation for a TRANSFER call (see M2Lib_TRANSFER).
+
+    Note that the process descriptor that is created is the same as the format
+    described in M2Lib.DEF as "aProcessDescriptor".
+
+    Parameters:
+
+      P:  PROC       The address of the Coroutine entry point.
+      A:  ADDRESS    The base address of the workSpace (stack).
+      n:  CARDINAL   The size in bytes of the workSpace (stack).
+      p1: ADDRESS    The result parameter (address of actual).
+*)
+
+PROCEDURE TRANSFER(VAR p1, p2: ADDRESS);
+(*
+  OPERATION:
+    This procedure provides the Modula-2 standard TRANSFER call.  It saves
+    the following run-time variables in the process descriptor whose address
+    is 'p1':
+
+      StackTop
+      StackBottom
+      ~StackFramePointer
+      ~Display
+      Stack register
+      Direct page register
+      24 Bit program counter
+
+      The Data Bank register is not currently saved.
+
+    After saving this information, these same variables are loaded from the
+    process descriptor whose address is 'p2'.
+
+    Note that although this describes the resulting affect, the actual order
+    may be different.  It may be that both 'p1' and 'p2' point to the same
+    descriptor, as such the actual code must preserve the original descriptor
+    before overwriting it with the current run-time variables.
+*)
+
+PROCEDURE IOTRANSFER(VAR p1, p2: ADDRESS; I: aVRN);
+(*
+  OPERATION:
+    This procedure provides the Modula-2 standard IOTRANSFER call.  A brief
+    lineup of the actions taken by this call are:
+
+      * Save current environment in p1
+      * Bind Interrupt to the specified vector
+      * Resume the process described by p2
+
+    When an interrupt occurs, the system will return control a run-time 
+    interrupt handler which:
+      
+      * Save current environment in p2
+      * Resume the process described by p1
+      
+    That process should handle the interrupt, and execute another IOTRANSFER 
+    as quickly as possible.  When it does, the actions are slightly 
+    different:
+
+      * Save current environment in p1
+      * Unbind Interrupt that was previously bound
+      * Bind interrupt to the specified vector
+      * Restore environment saved in p2
+      * RTL back to GS/OS (in effect, this resumes p2)
+    
+    By definition, an interrupt that is bound by IOTRANSFER is good for one
+    instance of the interrupt only.  Also because of the definition of the
+    procedure IOTRANSFER, "I" could well be a variable.  This would allow
+    the programmer to be sneaky and change from one interrupt to another
+    midstream by changing the vector in each execution of IOTRANSFER.
+
+    Because of the complications listed in the previous paragraph, it is
+    necessary to Unbind the interrupt each successive time we call IOTRANSFER,
+    and then re-bind it.
+*)
+
+END M2Lib.

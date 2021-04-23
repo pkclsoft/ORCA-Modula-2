@@ -1,0 +1,12 @@
+(*$NoImp*)  (* prevents the necessity for an initialisation procedure *)
+DEFINITION MODULE LongMath;
+
+PROCEDURE sqrt(x: LONGREAL): LONGREAL;
+PROCEDURE exp(x: LONGREAL): LONGREAL;
+PROCEDURE ln(x: LONGREAL): LONGREAL;
+PROCEDURE sin(x: LONGREAL): LONGREAL;
+PROCEDURE cos(x: LONGREAL): LONGREAL;
+PROCEDURE arctan(x: LONGREAL): LONGREAL;
+PROCEDURE entier(x: LONGREAL): LONGINT;
+
+END LongMath.

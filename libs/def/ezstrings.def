@@ -1,0 +1,125 @@
+DEFINITION MODULE EZStrings;
+(*
+  Author  : John Cameron
+*)
+
+PROCEDURE AllSpaces( VAR A: ARRAY OF CHAR ): BOOLEAN;
+(*
+  OPERATION:
+    Returns TRUE if the given string contains only spaces
+  NOTE:
+    This is not the same as a NUL string.
+*)
+
+PROCEDURE ArrayToString( a: ARRAY OF CHAR; VAR s: ARRAY OF CHAR );
+(*
+  OPERATION:
+    Takes array in "a" and copies it into "s". The difference is that trailing
+    blanks in "a" are not copied to "s". "s" terminates with a null
+    character (0C).
+  NOTE:
+    "s" and "a" may be the same.
+
+    "s" must be at least as big as "a".
+*)
+
+PROCEDURE ConvertCard( String: ARRAY OF CHAR; VAR n: CARDINAL );
+(*
+  OPERATION:
+    Uses NumberConversion.StringToCard to convert string to a CARDINAL.
+
+    In addition, interprets nul string as 0. (StringToCard crashes)
+
+    Also HALTS in case of bad conversion.
+*)
+
+PROCEDURE ConvertLongInt( String: ARRAY OF CHAR; VAR n: LONGINT );
+(*
+  OPERATION:
+    Uses NumberConversion.StringToLongInt to convert string to a LONGINT.
+
+    In addition, interprets nul string as 0. (StringToLongInt crashes)
+
+    Also HALTS in case of bad conversion.
+*)
+
+PROCEDURE DeleteLeadingSpaces( VAR String: ARRAY OF CHAR );
+(*
+  OPERATION:
+    Left Justifies the string. Trailing 0c.
+*)
+
+PROCEDURE LongIntToShortString( num: LONGINT; VAR Str: ARRAY OF CHAR; 
+                                width: CARDINAL );
+(*
+  OPERATION:
+    Convert the number in num to an ASCII representation filling the first
+    "width" characters of the array Str.
+    If the number is too big to fit unchanged into Str, it is abbreviated
+    using H, T and M to stand for Hundred, Thousand and Million.
+    For example, 12345 displayed in a 3 character Str would be represented
+    as 12T.
+  NOTE:
+    This procedure is table driven, using the global pseudo-constant array, 
+    Factor (see declaration above and initialization at end of this module).
+
+    This procedure will not work properly if num is negative. It will not
+    crash however.
+
+    If the number cannot be represented even using abbreviations, Str
+    is filled with ?'s.
+*)
+
+PROCEDURE NumericStringToArray( s: ARRAY OF CHAR; VAR a: ARRAY OF CHAR );
+(*
+  OPERATION:
+    Takes string in "s" and copies it into "a". The difference is that "a" is
+    right justified filled with '0's. 
+    "s" may be terminated with a null character (0C).
+  NOTE:
+    "s" and "a" may be the same.
+
+    If "a" cannot hold all the data in "s", it truncates on the right.
+*)
+
+PROCEDURE StringToLeftArray( s: ARRAY OF CHAR; VAR a: ARRAY OF CHAR );
+(*
+  OPERATION:
+    Takes string in "s" and copies it into "a". The difference is that "a" is
+    left justified filled with blanks. 
+    "s" may be terminated with a null character (0C).
+  NOTE:
+    "s" and "a" may be the same.
+
+    If "a" cannot hold all the data in "s", it truncates on the right.
+*)
+
+PROCEDURE ShortStringToLongInt( Str: ARRAY OF CHAR; VAR Num: LONGINT;
+                                VAR Done: BOOLEAN );
+(*
+  OPERATION:
+    Converts ASCII string coded with H, T, M standing for hundreds, thousands
+    and millions to a long integer.
+    The allowed characters are '0'..'9', 'H', 'T', 'M'. Detection of any
+    illegal character will cause Done to be set FALSE and Num to 0.
+*)
+
+PROCEDURE SpacedAppend( VAR Dest: ARRAY OF CHAR; AppendStr: ARRAY OF CHAR );
+(*
+  OPERATION:
+    Dest := Dest + ' ' + AppendStr
+*)
+
+PROCEDURE StringToRightArray( s: ARRAY OF CHAR; VAR a: ARRAY OF CHAR );
+(*
+  OPERATION:
+    Takes string in "s" and copies it into "a". The difference is that "a" is
+    right justified filled with blanks. 
+    "s" may be terminated with a null character (0C).
+  NOTE:
+    "s" and "a" may be the same.
+
+    If "a" cannot hold all the data in "s", it truncates on the right.
+*)
+
+END EZStrings.

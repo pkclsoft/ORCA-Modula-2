@@ -1,0 +1,78 @@
+DEFINITION MODULE EZDump;
+
+(*
+  This module provides simple methods of dumping the memory used by the
+  currently running application.
+*)
+
+FROM FileSystem IMPORT
+  File;
+FROM M2Lib IMPORT
+  aTerminateStatus;
+FROM SYSTEM IMPORT
+  ADDRESS;
+
+TYPE
+  aBlockType =  (data, code, stack, other);
+
+  aBlock =
+    RECORD
+      address:  ADDRESS;      (* memory address of block        *)
+      length:   LONGINT;      (* length in bytes of block       *)
+      type:     aBlockType;   (* type of block (it's use)       *)
+      segment:  CARDINAL;     (* the load segment number        *)
+      file:     CARDINAL;     (* the load file number           *)
+      position: LONGINT;      (* position in file of the block  *)
+    END;
+
+  pBlockListEntry = POINTER TO aBlockListEntry;
+  aBlockListEntry =
+    RECORD
+      next: pBlockListEntry;
+      info: aBlock;
+    END;
+
+  aDumpHeader =
+    RECORD
+      TermAddr:     ADDRESS;
+      StackTop:     CARDINAL;
+      StackBottom:  CARDINAL;
+      Reason:       aTerminateStatus;
+      stackFrame:   CARDINAL;
+      Display:      ARRAY [0..9] OF CARDINAL;
+    END;
+
+VAR
+  dumpBlockList:    pBlockListEntry;
+  dumpBlockListLen: CARDINAL;
+  dumpHeader:       aDumpHeader;
+  dumpStack:        ADDRESS;
+
+PROCEDURE ClosePMD(VAR dumpFile: File);
+(*
+  OPERATION:
+    Closes the dump file, and deallocates any memory taken up by the dump data.
+*)
+
+PROCEDURE DisplayReason(reason: aTerminateStatus);
+(*
+  OPERATION:
+    Displays on the screen, the reason for the termination.
+*)
+
+PROCEDURE OpenPMD(VAR dumpFile: File; name: ARRAY OF CHAR; VAR OK: BOOLEAN);
+(*
+  OPERATION:
+    Reads the informational component of the dump file into memory for
+    analysis.
+*)
+
+PROCEDURE WritePMD(TermAddr: ADDRESS; reason: aTerminateStatus);
+(*
+  OPERATION:
+    Dumps the contents of the current stack to disk in a filename of the
+    form "xxx.SDP", where xxx is up to 11 characters of the applications
+    filename.
+*)
+
+END EZDump.

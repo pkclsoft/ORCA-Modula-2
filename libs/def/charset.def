@@ -1,0 +1,11 @@
+(*$NoImp*)
+DEFINITION MODULE CharSet;
+(*
+  Author  : John Cameron
+*)
+
+TYPE
+    aCHARSet = SET OF CHAR;
+
+END CharSet.
+ 

@@ -1,0 +1,33 @@
+DEFINITION MODULE ListUtility;
+(*
+  Author  : John Cameron
+*)
+
+FROM Lists IMPORT aList;
+FROM SYSTEM IMPORT ADDRESS;
+
+PROCEDURE DuplicateList( List: aList; VAR ListCopy: aList );
+(*
+  OPERATION:
+    Makes a copy of a list.
+  NOTE:
+    The data pointed to by list entries is not duplicated - just the list
+    structure.
+    This allows you to have move than one position or ordering to your data
+    entries.
+    Of course, if you want to maintain this list as a duplicate you will have
+    to duplicate all future additions and deletions from list.
+    The original list positioning remains unchanged. The copied list is
+    positioned similarly.
+*)
+
+PROCEDURE FindEntryInList( List: aList; DataPtr: ADDRESS; VAR Found: BOOLEAN );
+(*
+  OPERATION
+    Scans list entries looking for DataPtr.
+    Returns Found TRUE if it finds it.
+    If Found, list is left positioned at the found entry
+    If NOT Found, list is left at end of list
+*)
+
+END ListUtility. 

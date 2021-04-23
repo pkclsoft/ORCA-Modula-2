@@ -1,0 +1,86 @@
+(*$NoImp*)
+DEFINITION MODULE ScrapManager;
+(*
+  Scrap Manager Interface File
+*)
+
+FROM Common IMPORT
+  String255, String255Ptr;
+FROM MemoryManager IMPORT
+  Handle;
+FROM QuickDrawII IMPORT Rect, GrafPortPtr;
+FROM SYSTEM IMPORT
+  ADDRESS;
+
+CONST
+  (*
+    Scrap types
+  *)
+  textScrap   =   0;
+  picScrap    =   1;
+
+TYPE
+  (*
+    ShowClipboard flag values
+  *)
+  ShowClipboardFlag = (cp0, cp1, cp2, cp3, cp4, cp5, cp6, cp7, cp8,
+                        cp9, cp10, cp11, cp12, cp13, cpCloseWindow,
+                        cpOpenWindow);
+  ShowClipboardFlags = SET OF ShowClipboardFlag;
+
+  ScrapBuffer =
+    RECORD
+      scrapType:    CARDINAL;
+      scrapSize:    LONGINT;
+      scrapHandle:  Handle;
+    END;
+  ScrapBufferPtr = POINTER TO ScrapBuffer;
+
+PROCEDURE ScrapBootInit; TOOL 0116H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE ScrapStartup; TOOL 0216H;
+
+PROCEDURE ScrapShutDown; TOOL 0316H;
+
+PROCEDURE ScrapVersion(): CARDINAL; TOOL 0416H;
+
+PROCEDURE ScrapReset; TOOL 0516H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE ScrapStatus(): BOOLEAN; TOOL 0616H;
+
+PROCEDURE GetIndScrap(index:  CARDINAL; bufferPtr: ScrapBufferPtr); TOOL 1416H;
+
+PROCEDURE GetScrap(destHandle: Handle; scrapType: CARDINAL); TOOL 0D16H;
+
+PROCEDURE GetScrapCount(): CARDINAL; TOOL 1216H;
+
+PROCEDURE GetScrapHandle(scrapType: CARDINAL): Handle; TOOL 0E16H;
+
+PROCEDURE GetScrapPath(): String255Ptr; TOOL 1016H;
+
+PROCEDURE GetScrapSize(scrapType: CARDINAL): LONGINT; TOOL 0F16H;
+
+PROCEDURE GetScrapState(): CARDINAL; TOOL 1316H;
+
+PROCEDURE LoadScrap; TOOL 0A16H;
+
+PROCEDURE PutScrap(numBytes:  LONGINT; 
+                   scrapType: CARDINAL;
+                   srcPtr:    ADDRESS); TOOL 0C16H;
+
+PROCEDURE SetScrapPath(VAR thePath: String255); TOOL 1116H;
+
+PROCEDURE ShowClipboard(flags:    ShowClipboardFlags;
+                        zoomRect: Rect): GrafPortPtr; TOOL 1516H;
+
+PROCEDURE UnloadScrap; TOOL 0916H;
+
+PROCEDURE ZeroScrap; TOOL 0B16H;
+
+END ScrapManager.

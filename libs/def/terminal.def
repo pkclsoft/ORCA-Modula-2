@@ -1,0 +1,21 @@
+DEFINITION MODULE Terminal;
+
+TYPE
+  aReadProc   = PROCEDURE(VAR CHAR, VAR BOOLEAN);
+  aWriteProc  = PROCEDURE(CHAR);
+
+PROCEDURE AssignRead(readProc: aReadProc);
+PROCEDURE AssignWrite(writeProc: aWriteProc);
+
+PROCEDURE DeassignRead;
+PROCEDURE DeassignWrite;
+PROCEDURE GetWriteProc(VAR curWriteProc: aWriteProc);
+
+PROCEDURE BusyRead(VAR ch: CHAR);
+PROCEDURE Read(VAR ch: CHAR);
+
+PROCEDURE Write(ch: CHAR);
+PROCEDURE WriteString(string: ARRAY OF CHAR);
+PROCEDURE WriteLn;
+
+END Terminal.

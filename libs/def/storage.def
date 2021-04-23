@@ -1,0 +1,52 @@
+DEFINITION MODULE Storage;
+(*
+  Standard dynamic storage management
+
+  Storage management for dynamic variables. Calls to the Modula-2 standard
+  procedures NEW and DISPOSE are translated into calls to ALLOCATE and
+  DEALLOCATE. The standard way to provide these two procedures is to import
+  them from this module 'Storage'.
+
+  This module is actually implemented in Storage.ASM, and works as a glue to
+  the ORCA Memory Manager Library Routines.
+
+  NOTE:
+    If you want to bypass the ORCA Memory Manager, and use the GS Memory 
+    Manager, see the module EZStorage which deals directly with the toolbox,
+    using the same interface as defined here, but also allowing you to do
+    things like allocate stack memory, etc.
+*)
+
+FROM SYSTEM IMPORT
+  ADDRESS;
+
+PROCEDURE ALLOCATE(VAR a: ADDRESS; size: CARDINAL);
+(*
+  OPERATION:
+    Allocate some dynamic storage (contiguous memory area).
+
+  NOTE:
+    The actual number of bytes allocated may be slightly greater than 'size',
+    due to administrative overhead.
+*)
+
+PROCEDURE DEALLOCATE (VAR a: ADDRESS; size: CARDINAL);
+(*
+  OPERATION:
+    Release some dynamic storage (contiguous memory area).
+
+  NOTE:
+    The storage area released is made available for subsequent calls to
+    ALLOCATE.
+
+    'a' is set to NIL as a result of the deallocation.
+*)
+
+PROCEDURE Available (size: CARDINAL) : BOOLEAN;
+(*
+  OPERATION:
+    Returns TRUE if there exists a block of memory at lease 'size' bytes in
+    size.
+*)
+
+END Storage.

@@ -1,0 +1,244 @@
+(*$NoImp*)
+DEFINITION MODULE DeskManager;
+(*
+  Desk Manager Interface File
+*)
+
+FROM Common IMPORT
+  String255, Ref;
+FROM EventManager IMPORT
+  EventMask, EventRecordPtr;
+FROM MemoryManager IMPORT
+  Handle;
+FROM QuickDrawII IMPORT
+  GrafPortPtr;
+FROM SYSTEM IMPORT
+  ADDRESS;
+
+CONST
+  (* 
+    NDA action codes 
+  *)
+  eventAction =         0001H;      (* code for event to be handled by NDA  *)
+  runAction =           0002H;      (* code passed when time period elapsed *)
+  cursorAction =        0003H;      (* code if NDA is frontmost window      *)
+  undoAction =          0005H;      (* code when user selects Undo          *)
+  cutAction =           0006H;      (* code when user selects Cut           *)
+  copyAction =          0007H;      (* code when user selects Copy          *)
+  pasteAction =         0008H;      (* code when user selects Paste         *)
+  clearAction =         0009H;      (* code when user selects Clear         *)
+  sysClickAction =      000AH;
+  optionalCloseAction = 000BH;
+
+  (* 
+    edit types 
+  *)
+  undoEdit =            0001H;      (* Undo edit type  *)
+  cutEdit =             0002H;      (* Cut edit type   *)
+  copyEdit =            0003H;      (* Copy edit type  *)
+  pasteEdit =           0004H;      (* Paste edit type *)
+  clearEdit =           0005H;      (* Clear edit type *)
+
+TYPE
+  CDAStartProc = PROCEDURE;
+  CDAShutdownProc = PROCEDURE;
+
+  CDAHeader = 
+    RECORD
+      DAName:     String255;
+      DAstart:    CDAStartProc;
+      DAShutDown: CDAShutdownProc;
+    END;
+  CDAHeaderPtr = POINTER TO CDAHeader;
+  CDAHeaderHandle = POINTER TO CDAHeaderPtr;
+
+  NDAOpenProc = PROCEDURE(): GrafPortPtr;
+  NDACloseProc = PROCEDURE;
+  NDAActionProc = PROCEDURE; (* note that parameters are passed in registers *)
+  NDAInitProc = PROCEDURE; (* note that parameters are passed in registers *)
+
+  NDAHeader =
+    RECORD
+      openRtn:   NDAOpenProc;
+      closeRtn:  NDACloseProc;
+      actionRtn: NDAActionProc;
+      initRtn:   NDAInitProc;
+      period:    CARDINAL;
+      eventMask: EventMask;
+      menuText:  ARRAY [0..255] OF CHAR;
+    END;
+  NDAHeaderPtr = POINTER TO NDAHeader;
+  NDAHeaderHandle = POINTER TO NDAHeaderPtr;
+
+  StringTable =
+    RECORD
+      titleStr:   ADDRESS;
+      controlStr: ADDRESS;
+      quitStr:    ADDRESS;
+      selectStr:  ADDRESS;
+    END;
+  StringTablePtr = POINTER TO StringTable;
+
+  RunItem =
+    RECORD
+      reserved:  LONGINT;
+      period:    CARDINAL;
+      signature: CARDINAL;
+      reserved2: LONGINT;
+    END;
+  RunItemPtr = POINTER TO RunItem;
+
+  (*
+    AuxWindow is the structure pointed to by the address at offset +024 that
+    is returned by GetAuxWindInfo.
+  *)
+  AuxWindow =
+    RECORD
+      status:       CARDINAL;
+      openProc:     ADDRESS;
+      closeProc:    NDACloseProc;
+      actionProc:   NDAActionProc;
+      initProc:     ADDRESS;
+      period:       CARDINAL;
+      eventMask:    EventMask;
+      lastServiced: LONGINT;
+      windowPtr:    GrafPortPtr;
+      ndaHandle:    NDAHeaderHandle;
+      memoryID:     CARDINAL;
+    END;
+  AuxWindowPtr = POINTER TO AuxWindow;
+
+  (*
+    When the system calls your action proc with an action of sysClickAction,
+    the longword parameter contains the address of a structure with the format:
+  *)
+  SysClick =
+    RECORD
+      result:       CARDINAL;
+      fwValue:      CARDINAL;
+      windowPtr:    GrafPortPtr;
+      eventRecPtr:  EventRecordPtr;
+    END;
+  SysClickPtr = POINTER TO SysClick;
+
+  DAInfo =
+    RECORD
+      CASE :BOOLEAN OF
+        TRUE:
+          CDADataSize:  CARDINAL;
+          CDAHeader:    CDAHeaderHandle;
+      | FALSE:
+          NDADataSize:  CARDINAL;
+          NDAOpen:      BOOLEAN;
+          openProc:     NDAOpenProc;
+          closeProc:    NDACloseProc;
+          actionProc:   NDAActionProc;
+          initProc:     NDAInitProc;
+          period:       CARDINAL;
+          eventMask:    EventMask;
+          lastService:  LONGINT;
+          windowPtr:    GrafPortPtr;
+          NDAHeader:    NDAHeaderHandle;
+          memoryID:     CARDINAL;
+      END;
+    END;
+  DAInfoPtr = POINTER TO DAInfo;
+    
+PROCEDURE DeskBootInit; TOOL 0105H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE DeskStartUp; TOOL 0205H;
+
+PROCEDURE DeskShutDown; TOOL 0305H;
+
+PROCEDURE DeskVersion(): CARDINAL; TOOL 0405H;
+
+PROCEDURE DeskReset; TOOL 0505H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE DeskStatus(): BOOLEAN; TOOL 0605H;
+
+PROCEDURE AddToRunQ(header: RunItemPtr); TOOL 1F05H;
+
+PROCEDURE CallDeskAcc(flags:        CARDINAL;
+                      daReference:  Ref;
+                      action:       CARDINAL;
+                      data:         Ref): CARDINAL; TOOL 2405H;
+    
+PROCEDURE ChooseCDA; TOOL 1105H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE CloseAllNDAs; TOOL 1D05H;
+
+PROCEDURE CloseNDA(refNum: CARDINAL); TOOL 1605H;
+
+PROCEDURE CloseNDAbyWinPtr(theWindow: GrafPortPtr); TOOL 1C05H;
+
+PROCEDURE FixAppleMenu(startingID: CARDINAL); TOOL 1E05H;
+
+PROCEDURE GetDAStrPtr(): StringTablePtr; TOOL 1405H;
+
+PROCEDURE GetDeskAccInfo(flags:       CARDINAL;
+                         daReference: Ref;
+                         buffSize:    CARDINAL;
+                         bufferPtr:   DAInfoPtr); TOOL 2305H;
+
+PROCEDURE GetDeskGlobal(selector: CARDINAL): GrafPortPtr; TOOL 2505H;
+
+PROCEDURE GetNumNDAs(): CARDINAL; TOOL 1B05H;
+
+PROCEDURE InstallCDA(IDHandle: CDAHeaderHandle); TOOL 0F05H;
+
+PROCEDURE InstallNDA(IDHandle: NDAHeaderHandle); TOOL 0E05H;
+
+PROCEDURE OpenNDA(DAIDNumber: CARDINAL): CARDINAL; TOOL 1505H;
+
+PROCEDURE RemoveFromRunQ(header: RunItemPtr); TOOL 2005H;
+
+PROCEDURE RemoveCDA(IDHandle: CDAHeaderHandle); TOOL 2105H;
+
+PROCEDURE RemoveNDA(IDHandle: NDAHeaderHandle); TOOL 2205H;
+
+PROCEDURE RestAll; TOOL 0C05H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE RestScrn; TOOL 0A05H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE SaveAll; TOOL 0B05H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE SaveScrn; TOOL 0905H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE SetDAStrPtr(altDispHandle: Handle; newStrings: StringTablePtr); TOOL 1305H;
+
+PROCEDURE SystemClick(theEvent:       EventRecordPtr; 
+                      theWindow:      GrafPortPtr;
+                      findWndwResult: CARDINAL); TOOL 1705H;
+
+PROCEDURE SystemEdit(editType: CARDINAL): BOOLEAN; TOOL 1805H;
+
+PROCEDURE SystemEvent(eventWhat:    CARDINAL; 
+                      eventMessage: LONGINT;
+                      eventWhen:    LONGINT;
+                      eventWhere:   LONGINT; 
+                      eventMods:    CARDINAL): BOOLEAN; TOOL 1A05H;
+
+PROCEDURE SystemTask; TOOL 1905H;
+
+END DeskManager.

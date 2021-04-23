@@ -1,0 +1,413 @@
+(*$NoImp*)
+DEFINITION MODULE OrcaShell;
+
+(*
+   ORCA/M Shell Interface File
+
+   Notes:  Each call refers to a data control block (DCB),
+           defined as a record.  Calls which return values
+           store the output into the DCB.
+           Each call returns an error number.
+
+   Copyright 1987-1993
+   By the Byte Works, Inc.
+   All Rights Reserved
+*)
+
+FROM Common IMPORT
+  String255Ptr;
+FROM GSOSInterface IMPORT
+  GSOSInStringPtr, GSOSOutStringPtr, AccessSet;
+FROM MemoryManager IMPORT
+  Handle;
+FROM SYSTEM IMPORT
+  BYTE, ADDRESS;
+
+CONST
+  (*
+    The vector numbers for use with ChangeVector.
+  *)
+  vEdit             = 0;
+  vConsoleOut       = 1;
+  vStop             = 2;
+
+  (*
+    The device numbers for use with Direction.
+  *)
+  devStandardInput  = 0;
+  devStandardOutput = 1;
+  devErrorOutput    = 2;
+
+  (*
+    The redirection types.
+  *)
+  redirConsole      = 0;
+  redirPrinter      = 1; (* do not use this under v2.0 or later of ORCA *)
+  redirDiskFile     = 2;
+
+  (*
+    Flag definitions for Execute.
+  *)
+  bNoNewVariables   = 15;
+
+  (*
+    Action codes for FastFile.
+  *)
+  actLoad           = 0;
+  actIndexedLoad    = 1;
+  actLoadFromMemory = 2;
+  actSave           = 3;
+  actAdd            = 4;
+  actDelete         = 5;
+  actRemove         = 6;
+  actPurge          = 7;
+
+  (*
+    Bit definitions for the flags word in FastFile.
+  *)
+  bDiskAndMemory    = 15;
+  bMayBePurged      = 14;
+
+  (*
+    Bit definitions for the lops and kFlag fields.  These two fields are defined
+    by Byteworks as two bytes.  To make it easier to manipulate lops, these two
+    fields have been placed in a variant record, allowing the lops field to be
+    treated as a bitset.  Manipulation of kFlag should be done with normal byte
+    manipulation.
+  *)
+  bCompile          =  0;
+  bLink             =  1;
+  bExecute          =  2;
+
+  (*
+    Bit definitions for InitWildCard.
+  *)
+  bNoPrompting      = 15;
+  bOneOnly          = 14;
+  bRecursive        = 13;
+  bDirectoryAfter   = 12;
+
+TYPE
+  ChangeVectorDCB =
+    RECORD
+      pCount:   CARDINAL;
+      reserved: CARDINAL;
+      vector:   CARDINAL;
+      proc:     ADDRESS;
+      oldProc:  ADDRESS;
+    END;
+
+  ConsoleOutDCB =
+    RECORD
+      pCount:   CARDINAL;
+      ch:       CHAR;
+      dummy:    CHAR;
+    END;
+
+  DirectionDCB =
+    RECORD
+      pCount:   CARDINAL;
+      device:   CARDINAL;
+      result:   CARDINAL;
+    END;
+
+  ErrorDCB =
+    RECORD
+      pCount:       CARDINAL;
+      errorNumber:  CARDINAL;
+    END;
+
+  ExecuteDCB =
+    RECORD
+      pCount:         CARDINAL;
+      flag:           BITSET;
+      commandString:  ADDRESS;
+    END;
+
+  ExpandDevicesDCB =
+    RECORD
+      pCount:   CARDINAL;
+      inName:   GSOSInStringPtr;
+      outName:  GSOSOutStringPtr;
+    END;
+
+  ExportDCB =
+    RECORD
+      pCount:     CARDINAL;
+      name:       String255Ptr;
+      exportable: BOOLEAN;
+    END;
+
+  FastFileDCB =
+    RECORD
+      pCount:         CARDINAL;
+      action:         CARDINAL;
+      index:          CARDINAL;
+      flags:          BITSET;
+      filehandle:     Handle;
+      pathName:       GSOSInStringPtr;
+      access:         AccessSet;
+      fileType:       CARDINAL;
+      auxType:        LONGINT;
+      storageType:    CARDINAL;
+      createDate:     LONGINT;
+      createTime:     LONGINT;
+      modDate:        LONGINT;
+      modTime:        LONGINT;
+      optionList:     ADDRESS;
+      eof:            LONGINT;
+      blocksUsed:     LONGINT;
+    END;
+
+  GetCommandDCB =
+    RECORD
+      pCount:       CARDINAL;
+      index:        CARDINAL;
+      restartable:  BOOLEAN;
+      reserved:     CARDINAL;
+      command:      CARDINAL;
+      nameLen:      BYTE;
+      name:         ARRAY [0..15] OF CHAR;
+    END;
+
+  (*
+    The GetIODevices call is no longer supported.
+  *)
+  GetIODevicesDCB =
+    RECORD
+    END;
+
+  GetLangDCB =
+    RECORD
+      pCount: CARDINAL;
+      lang:   CARDINAL;
+    END;
+
+  aSwitch = (s0, s1, s2, s3, s4, s5, sZ, sY, sX, sW, sV, sU, sT, sS, sR, sQ,
+             sP, sO, sN, sM, sL, sK, sJ, sI, sH, sG, sF, sE, sD, sC, sB, sA);
+  aSwitchSet = SET OF aSwitch;
+
+  aKeepStyle = (kDontSave, kSaveObject, kRootExists, kSearchSuffix);
+
+  GetLInfoDCB =
+    RECORD
+      pCount:     CARDINAL;
+      sFile:      GSOSOutStringPtr;
+      dFile:      GSOSOutStringPtr;
+      parms:      GSOSOutStringPtr;
+      iString:    GSOSOutStringPtr;
+      merr:       BYTE;
+      merrf:      BYTE;
+
+      CASE :BOOLEAN OF
+        TRUE:   flags:  BITSET;  (* lops & kflag become one 16 bit bitset *)
+        |
+        FALSE:  lops:   BYTE;
+                kFlag:  aKeepStyle;
+      END;
+
+      mFlags:     aSwitchSet;
+      pFlags:     aSwitchSet;
+      origin:     LONGINT;
+    END;
+
+  InitWildcardDCB =
+    RECORD
+      pCount: CARDINAL;
+      wFile:  GSOSInStringPtr;
+      flags:  BITSET;
+    END;
+
+  KeyPressDCB =
+    RECORD
+      pCount:       CARDINAL;
+      key:          CARDINAL;
+      modifiers:    CARDINAL;
+      available:    BOOLEAN;
+    END;
+
+  NextWildcardDCB =
+    RECORD
+      pCount:          CARDINAL;
+      pathName:        GSOSInStringPtr;
+      access:          AccessSet;
+      fileType:        CARDINAL;
+      auxType:         LONGINT;
+      storageType:     CARDINAL;
+      createDate:      LONGINT;
+      createTime:      LONGINT;
+      modDate:         LONGINT;
+      modTime:         LONGINT;
+      optionList:      ADDRESS;
+      eof:             LONGINT;
+      blocksUsed:      LONGINT;
+      resourceEOF:     LONGINT;
+      resourceBlocks:  LONGINT;
+    END;
+
+  PopVariablesDCB =
+    RECORD
+      pCount: CARDINAL;
+    END;
+
+  PushVariablesDCB =
+    RECORD
+      pCount: CARDINAL;
+    END;
+
+  ReadIndexedDCB =
+    RECORD
+      pCount:     CARDINAL;
+      varName:    GSOSOutStringPtr;
+      value:      GSOSOutStringPtr;
+      index:      CARDINAL;
+      exportable: BOOLEAN;
+    END;
+
+  ReadKeyDCB =
+    RECORD
+      pCount:     CARDINAL;
+      key:        CARDINAL;
+      modifiers:  CARDINAL;
+    END;
+
+  ReadVariableDCB =
+    RECORD
+      pCount:     CARDINAL;
+      varName:    GSOSInStringPtr;
+      value:      GSOSOutStringPtr;
+      exportable: BOOLEAN;
+    END;
+
+  RedirectDCB =
+    RECORD
+      pCount:     CARDINAL;
+      device:     CARDINAL;
+      appendIt:   BOOLEAN;
+      fileName:   GSOSInStringPtr;
+    END;
+
+  SetDCB =
+    RECORD
+      pCount:     CARDINAL;
+      varName:    GSOSInStringPtr;
+      value:      GSOSInStringPtr;
+      exportable: BOOLEAN;
+    END;
+
+  SetIODevicesDCB =
+    RECORD
+      pCount:     CARDINAL;
+      outputType: INTEGER;
+      outputAddr: ADDRESS;
+      errorType:  INTEGER;
+      errorAddr:  ADDRESS;
+      inputType:  INTEGER;
+      inputAddr:  ADDRESS;
+    END;
+
+  SetLangDCB =
+    RECORD
+      pCount:     CARDINAL;
+      lang:       CARDINAL;
+    END;
+
+  SetLInfoDCB =
+    RECORD
+      pCount:     CARDINAL;
+      sFile:      GSOSInStringPtr;
+      dFile:      GSOSInStringPtr;
+      parms:      GSOSInStringPtr;
+      iString:    GSOSInStringPtr;
+      merr:       BYTE;
+      merrf:      BYTE;
+
+      CASE :BOOLEAN OF
+        TRUE:   flags:  BITSET;  (* lops & kflag become one 16 bit bitset *)
+        |
+        FALSE:  lops:   BYTE;
+                kFlag:  aKeepStyle;
+      END;
+
+      mFlags:     aSwitchSet;
+      pFlags:     aSwitchSet;
+      origin:     LONGINT;
+    END;      
+
+  StopDCB =
+    RECORD
+      pCount:     CARDINAL;
+      stopFlag:   BOOLEAN;
+    END;
+
+  UnsetVariableDCB =
+    RECORD
+      pCount:     CARDINAL;
+      name:       GSOSInStringPtr;
+    END;
+
+  VersionDCB =
+    RECORD
+      pCount:     CARDINAL;
+      version:    ARRAY [1..4] OF CHAR;
+    END;
+
+PROCEDURE ChangeVector(VAR parms: ChangeVectorDCB); GSOS 014CH;
+
+PROCEDURE ConsoleOut(VAR parms: ConsoleOutDCB); GSOS 015AH;
+
+PROCEDURE Direction(VAR parms: DirectionDCB); GSOS 014FH;
+
+PROCEDURE Error(VAR parms: ErrorDCB); GSOS 0145H;
+
+PROCEDURE Execute(VAR parms: ExecuteDCB); GSOS 014DH;
+
+PROCEDURE ExpandDevices(VAR parms: ExpandDevicesDCB); GSOS 0154H;
+
+PROCEDURE Export(VAR parms: ExportDCB); GSOS 0156H;
+
+PROCEDURE FastFile(VAR parms: FastFileDCB); GSOS 014EH;
+
+PROCEDURE GetCommand(VAR parms: GetCommandDCB); GSOS 015DH;
+
+PROCEDURE GetIODevices(VAR parms: GetIODevicesDCB); GSOS 015CH;
+
+PROCEDURE GetLang(VAR parms: GetLangDCB); GSOS 0143H;
+
+PROCEDURE GetLInfo(VAR parms: GetLInfoDCB); GSOS 0141H;
+
+PROCEDURE InitWildcard(VAR parms: InitWildcardDCB); GSOS 0149H;
+
+PROCEDURE KeyPress(VAR parms: KeyPressDCB); GSOS 015EH;
+
+PROCEDURE NextWildcard(VAR parms: NextWildcardDCB); GSOS 014AH;
+
+PROCEDURE PopVariables(parms: ADDRESS (*pass NIL*)); GSOS 0157H;
+
+PROCEDURE PushVariables(parms: ADDRESS (*pass NIL*)); GSOS 0158H;
+
+PROCEDURE ReadIndexed(VAR parms: ReadIndexedDCB); GSOS 0148H;
+
+PROCEDURE ReadKey(VAR parms: ReadKeyDCB); GSOS 015FH;
+
+PROCEDURE ReadVariable(VAR parms: ReadVariableDCB); GSOS 014BH;
+
+PROCEDURE Redirect(VAR parms: RedirectDCB); GSOS 0150H;
+
+PROCEDURE SetVariable(VAR parms: SetDCB); GSOS 0146H;
+
+PROCEDURE SetIODevices(VAR parms: SetIODevicesDCB); GSOS 015BH;
+
+PROCEDURE SetLang(VAR parms: SetLangDCB); GSOS 0144H;
+
+PROCEDURE SetLInfo(VAR parms: SetLInfoDCB); GSOS 0142H;
+
+PROCEDURE SetStopFlag(VAR parms: StopDCB); GSOS 0159H;
+
+PROCEDURE Stop(VAR parms: StopDCB); GSOS 0153H;
+
+PROCEDURE UnsetVariable(VAR parms: UnsetVariableDCB); GSOS 0155H;
+
+PROCEDURE Version(VAR parms: VersionDCB); GSOS 0147H;
+
+END OrcaShell.

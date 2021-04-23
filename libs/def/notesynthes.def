@@ -1,0 +1,80 @@
+(*$NoImp*)
+DEFINITION MODULE NoteSynthesizer;
+(*
+  Note Synthesizer Tool Set Interface File
+*)
+
+FROM SYSTEM IMPORT
+  ADDRESS, BYTE;
+
+TYPE
+  WaveForm =
+    RECORD
+      topKey:      BYTE;
+      waveAddress: BYTE;
+      waveSize:    BYTE;
+      DOCMode:     BYTE;
+      relPitch:    CARDINAL;
+    END;
+
+  Instrument = 
+    RECORD
+      envelope:          ARRAY [1..24] OF BYTE;
+      releaseSegment:    BYTE;
+      priorityIncrement: BYTE;
+      pitchBendRange:    BYTE;
+      vibratoDepth:      BYTE;
+      vibratoSpeed:      BYTE;
+      spare:             BYTE;
+      aWaveCount:        BYTE;
+      bWaveCount:        BYTE;
+      aWaveList:         ARRAY [1..1] OF WaveForm; (* aWaveCount * 6 BYTEs *)
+      bWaveList:         ARRAY [1..1] OF WaveForm; (* bWaveCount * 6 BYTEs *)
+    END;
+  InstrumentPtr = POINTER TO Instrument;
+
+  GeneratorControlBlock = 
+    RECORD
+      synthID:       BYTE;
+      genNum:        BYTE;
+      semitone:      BYTE;
+      volume:        BYTE;
+      pitchBend:     BYTE;
+      vibratoDepth:  BYTE;
+      reserved:      ARRAY [1..10] OF BYTE;
+    END;
+
+PROCEDURE NSBootInit; TOOL 0119H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE NSStartUp(updateRate: CARDINAL; updateRtn: ADDRESS); TOOL 0219H;
+
+PROCEDURE NSShutDown; TOOL 0319H;
+
+PROCEDURE NSVersion(): CARDINAL; TOOL 0419H;
+
+PROCEDURE NSReset; TOOL 0519H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE NSStatus(): BOOLEAN; TOOL 0619H;
+
+PROCEDURE AllNotesOff; TOOL 0D19H;
+
+PROCEDURE AllocGen(requestPriority: CARDINAL): CARDINAL; TOOL 0919H;
+
+PROCEDURE DeallocGen(genNum: CARDINAL); TOOL 0A19H;
+
+PROCEDURE NoteOff(genNum, semitone: CARDINAL); TOOL 0C19H;
+
+PROCEDURE NoteOn(genNum, semitone, volume: CARDINAL;
+                 theInstrument: InstrumentPtr); TOOL 0B19H;
+
+PROCEDURE NSSetUpdateRate(newRate: CARDINAL): CARDINAL; TOOL 0E19H;
+
+PROCEDURE NSSetUserUpdateRtn(newUpdateRtn: ADDRESS): ADDRESS; TOOL 0F19H;
+
+END NoteSynthesizer.

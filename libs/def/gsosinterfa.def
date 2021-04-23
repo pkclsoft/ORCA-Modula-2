@@ -1,0 +1,556 @@
+DEFINITION MODULE GSOSInterface;
+
+FROM SYSTEM IMPORT
+   ADDRESS, BYTE;
+
+CONST
+  GSOSNameLength        = 508;
+
+  (*
+    Bit definitions for use with OSShutDown
+  *)
+  bTrashMemoryManager   = 1;
+  bRestartComputer      = 0;
+
+  (*
+    Bit definitions for use with SetSysPrefs
+  *)
+  bDisplayMountDialog   = 15;
+  bNoCancelInDialog     = 14;
+  bSuppressErrorDialog  = 13;
+
+  (*
+    Bit definitions for use with ExpandPath
+  *)
+  bUpperCasePath        = 15;
+
+  (*
+    Bit definitions for use with GetDirEntry
+  *)
+  bExtendedFile         = 15;
+
+  (*
+    Bit definitions for use with Quit
+  *)
+  bPlaceInfoOnStack     = 15;
+  bRestartFromMemory    = 14;
+  bDontChangePrefixes   = 13;
+
+  (*
+    Bit definitions for use with GetFSTInfo
+  *)
+  bConvertToUpperCase   = 15;
+  bCharacterFST         = 14;
+
+TYPE
+  GSOSNameString = ARRAY [0..GSOSNameLength-1] OF CHAR;
+
+  GSOSInString =
+    RECORD
+      length: CARDINAL;
+      text:   GSOSNameString;
+    END;
+  GSOSInStringPtr = POINTER TO GSOSInString;
+  GSOSInStringHand = POINTER TO GSOSInStringPtr;
+
+  GSOSOutString =
+    RECORD
+      inLength: CARDINAL;
+      CASE :BOOLEAN OF
+        TRUE:   inString: GSOSInString;
+        |
+        FALSE:  outLength:  CARDINAL;
+                text:       GSOSNameString;
+      END;
+    END;
+  GSOSOutStringPtr = POINTER TO GSOSOutString;
+  GSOSOutStringHand = POINTER TO GSOSOutStringPtr;
+
+  OptionList =
+    RECORD
+      totalSize:    CARDINAL;
+      requiredSize: CARDINAL;
+      fileSysID:    CARDINAL;
+      (* Change the array size as required *)
+      theData:      ARRAY [1..100] OF BYTE;
+    END;
+  OptionListPtr = POINTER TO OptionList;
+
+  accessAttributes = (aaReadEnabled, aaWriteEnabled, aaInvisible,
+                      aaReserved3, aaReserved4, 
+                      aaBackupNeeded, aaRenameEnabled, aaDestroyEnabled,
+                      aaReserved8, aaReserved9, aaReserved10, aaReserved11,
+                      aaReserved12, aaReserved13, aaReserved14, aaReserved15);
+  AccessSet = SET OF accessAttributes;
+
+  deviceCharacteristics = (dcReserved0, dcReserved1,
+                           dcRemovable, dcFormatAllowed,
+                           dcReserved4,
+                           dcReadAllowed, dcWriteAllowed, dcBlockDevice,
+                           dcSpeed8, dcSpeed9, dcFixedName, dcRestartable,
+                           dcBusy, 
+                           dcReserved13,
+                           dcLinkedDevice, dcRAMorROMDisk);
+  DeviceCharacteristicsSet = SET OF deviceCharacteristics;
+
+  createDCB =
+    RECORD
+      pCount:        CARDINAL;
+      pathName:      GSOSInStringPtr;
+      access:        AccessSet;
+      fileType:      CARDINAL;
+      auxType:       LONGINT;
+      storageType:   CARDINAL;
+      eof:           LONGINT;
+      resourceEOF:   LONGINT;
+    END;
+
+  destroyDCB =
+    RECORD
+      pCount:   CARDINAL;
+      pathName: GSOSInStringPtr;
+    END;
+
+  shutdownDCB =
+    RECORD
+      pCount:        CARDINAL;
+      shutdownFlag:  BITSET;
+    END;
+
+  changePathDCB =
+    RECORD
+      pCount:      CARDINAL;
+      pathName:    GSOSInStringPtr;
+      newPathName: GSOSInStringPtr;
+    END;
+
+  setFileInfoDCB =
+    RECORD
+      pCount:     CARDINAL;
+      pathName:   GSOSInStringPtr;
+      access:     AccessSet;
+      fileType:   CARDINAL;
+      auxType:    LONGINT;
+      nullField1: CARDINAL;        (* set this field to zero *)
+      createDate: LONGINT;
+      createTime: LONGINT;
+      modDate:    LONGINT;
+      modTime:    LONGINT;
+      optionList: ADDRESS;
+      nullField2: LONGINT;        (* set this field to zero *)
+      nullField3: LONGINT;        (* set this field to zero *)
+      nullField4: LONGINT;        (* set this field to zero *)
+      nullField5: LONGINT;        (* set this field to zero *)
+    END;
+
+  getFileInfoDCB =
+    RECORD
+      pCount:          CARDINAL;
+      pathName:        GSOSInStringPtr;
+      access:          AccessSet;
+      fileType:        CARDINAL;
+      auxType:         LONGINT;
+      storageType:     CARDINAL;
+      createDate:      LONGINT;
+      createTime:      LONGINT;
+      modDate:         LONGINT;
+      modTime:         LONGINT;
+      optionList:      ADDRESS;
+      eof:             LONGINT;
+      blocksUsed:      LONGINT;
+      resourceEOF:     LONGINT;
+      resourceBlocks:  LONGINT;
+    END;
+
+  volumeDCB =
+    RECORD
+      pCount:      CARDINAL;
+      devName:     GSOSInStringPtr;
+      volName:     GSOSOutStringPtr;
+      totalBlocks: LONGINT;
+      freeBlocks:  LONGINT;
+      fileSysID:   CARDINAL;
+      blockSize:   CARDINAL;
+    END;
+
+  prefixDCB =
+    RECORD
+      pCount:    CARDINAL;
+      prefixNum: CARDINAL;
+      prefix:    GSOSInStringPtr;
+    END;
+
+  clrBkupBitDCB =
+    RECORD
+      pCount:   CARDINAL;
+      pathName: GSOSInStringPtr;
+    END;
+
+  prefsDCB =
+    RECORD
+      pCount:       CARDINAL;
+      preferences:  BITSET;
+    END;
+
+  nullDCB =
+    RECORD
+      pCount:  CARDINAL;
+    END;
+
+  expandPathDCB =
+    RECORD
+      pCount:      CARDINAL;
+      inputPath:   GSOSInStringPtr;
+      outputPath:  GSOSOutStringPtr;
+      flags:       BITSET;
+    END;
+
+  openDCB =
+    RECORD
+      pCount:          CARDINAL;
+      refNum:          CARDINAL;
+      pathName:        GSOSInStringPtr;
+      requestAccess:   AccessSet;
+      resourceNumber:  CARDINAL;
+      access:          AccessSet;
+      fileType:        CARDINAL;
+      auxType:         LONGINT;
+      storageType:     CARDINAL;
+      createDate:      LONGINT;
+      createTime:      LONGINT;
+      modDate:         LONGINT;
+      modTime:         LONGINT;
+      optionList:      ADDRESS;
+      eof:             LONGINT;
+      blocksUsed:      LONGINT;
+      resourceEOF:     LONGINT;
+      resourceBlocks:  LONGINT;
+    END;
+
+  newlineDCB =
+    RECORD
+      pCount:        CARDINAL;
+      refNum:        CARDINAL;
+      enableMask:    CARDINAL;
+      numChars:      CARDINAL;
+      newlineTable:  ADDRESS;
+    END;
+
+  readWriteDCB =
+    RECORD
+      pCount:        CARDINAL;
+      refNum:        CARDINAL;
+      dataBuffer:    ADDRESS;
+      requestCount:  LONGINT;
+      transferCount: LONGINT;
+      cachePriority: CARDINAL;
+    END;
+
+  closeDCB =
+    RECORD
+      pCount: CARDINAL;
+      refNum: CARDINAL;
+    END;
+
+  flushDCB =
+    RECORD
+      pCount: CARDINAL;
+      refNum: CARDINAL;
+    END;
+
+  setMarkDCB =
+    RECORD
+      pCount:        CARDINAL;
+      refNum:        CARDINAL;
+      base:          CARDINAL;
+      displacement:  LONGINT;
+    END;
+
+  getMarkDCB =
+    RECORD
+      pCount:    CARDINAL;
+      refNum:    CARDINAL;
+      position:  LONGINT;
+    END;
+
+  eofDCB =
+    RECORD
+      pCount:  CARDINAL;
+      refNum:  CARDINAL;
+      eof:     LONGINT;
+    END;
+
+  levelDCB =
+    RECORD
+     pCount: CARDINAL;
+     level:  CARDINAL;
+   END;
+
+  dirEntryDCB =
+    RECORD
+      pCount:          CARDINAL;
+      refNum:          CARDINAL;
+      flags:           BITSET;
+      base:            CARDINAL;
+      displacement:    CARDINAL;
+      name:            GSOSOutStringPtr;
+      entryNum:        CARDINAL;
+      fileType:        CARDINAL;
+      eofValue:        LONGINT;
+      blockCount:      LONGINT;
+      createDate:      LONGINT;
+      createTime:      LONGINT;
+      modDate:         LONGINT;
+      modTime:         LONGINT;
+      access:          AccessSet;
+      auxType:         LONGINT;
+      fileSystemID:    CARDINAL;
+      optionList:      ADDRESS;
+      resourceEOF:     LONGINT;
+      resourceBlocks:  LONGINT;
+    END;
+
+  statusDCB =
+    RECORD
+      pCount:  CARDINAL;
+      status:  CARDINAL;
+    END;
+
+  getDevNumDCB =
+    RECORD
+      pCount:  CARDINAL;
+      devName: GSOSInStringPtr;
+      devNum:  CARDINAL;
+    END;
+
+  formatDCB =
+    RECORD
+      pCount:        CARDINAL;
+      devName:       GSOSInStringPtr;
+      volName:       GSOSInStringPtr;
+      fileSysID:     CARDINAL;
+      reqFileSysID:  CARDINAL;
+    END;
+
+  getNameDCB =
+    RECORD
+      pCount:     CARDINAL;
+      dataBuffer: GSOSOutStringPtr;
+    END;
+
+  quitDCB =
+    RECORD
+      pCount:   CARDINAL;
+      pathName: GSOSInStringPtr;
+      flags:    BITSET;
+    END;
+
+  osVersionDCB =
+    RECORD
+      pCount:  CARDINAL;
+      version: CARDINAL;
+    END;
+
+  fstInfoDCB =
+    RECORD
+      pCount:       CARDINAL;
+      fstNum:       CARDINAL;
+      fileSysID:    CARDINAL;
+      fstName:      GSOSOutStringPtr;
+      version:      CARDINAL;
+      attributes:   BITSET;
+      blockSize:    CARDINAL;
+      maxVolSize:   LONGINT;
+      maxFileSize:  LONGINT;
+    END;
+
+  dInfoDCB =
+    RECORD
+      pCount:           CARDINAL;
+      devNum:           CARDINAL;
+      devName:          GSOSOutStringPtr;
+      characteristics:  DeviceCharacteristicsSet;
+      totalBlocks:      LONGINT;
+      slotNum:          CARDINAL;
+      unitNum:          CARDINAL;
+      version:          CARDINAL;
+      deviceIDNum:      CARDINAL;
+      headLink:         CARDINAL;
+      forwardLink:      CARDINAL;
+      extendedDIBptr:   ADDRESS;
+    END;
+
+  dStatusDCB =
+    RECORD
+      pCount:         CARDINAL;
+      devNum:         CARDINAL;
+      statusCode:     CARDINAL;
+      statusList:     ADDRESS;
+      requestCount:   LONGINT;
+      transferCount:  LONGINT;
+    END;
+
+  devReadWriteDCB =
+    RECORD
+      pCount:         CARDINAL;
+      devNum:         CARDINAL;
+      buffer:         ADDRESS;
+      requestCount:   LONGINT;
+      startingBlock:  LONGINT;
+      blockSize:      CARDINAL;
+      transferCount:  LONGINT;
+    END;
+
+  bindIntDCB =
+    RECORD
+      pCount:  CARDINAL;
+      intNum:  CARDINAL;
+      vrn:     CARDINAL;
+      intCode: ADDRESS;
+    END;
+
+  unbindIntDCB =
+    RECORD
+      pCount: CARDINAL;
+      intNum: CARDINAL;
+    END;
+
+PROCEDURE Create(VAR parms: createDCB); GSOS 2001H;
+
+PROCEDURE Destroy(VAR parms: destroyDCB); GSOS 2002H;
+
+PROCEDURE OSShutdown(VAR parms: shutdownDCB); GSOS 2003H;
+
+PROCEDURE ChangePath(VAR parms: changePathDCB); GSOS 2004H;
+
+PROCEDURE SetFileInfo(VAR parms: setFileInfoDCB); GSOS 2005H;
+
+PROCEDURE GetFileInfo(VAR parms: getFileInfoDCB); GSOS 2006H;
+
+PROCEDURE Volume(VAR parms: volumeDCB); GSOS 2008H;
+
+PROCEDURE SetPrefix(VAR parms: prefixDCB); GSOS 2009H;
+
+PROCEDURE GetPrefix(VAR parms: prefixDCB); GSOS 200AH;
+
+PROCEDURE ClearBackup(VAR parms: clrBkupBitDCB); GSOS 200BH;
+
+PROCEDURE SetSysPrefs(VAR parms: prefsDCB); GSOS 200CH;
+
+PROCEDURE Null(VAR parms: nullDCB); GSOS 200DH;
+
+PROCEDURE ExpandPath(VAR parms: expandPathDCB); GSOS 200EH;
+
+PROCEDURE GetSysPrefs(VAR parms: prefsDCB); GSOS 200FH;
+
+PROCEDURE Open(VAR parms: openDCB); GSOS 2010H;
+
+PROCEDURE Newline(VAR parms: newlineDCB); GSOS 2011H;
+
+PROCEDURE Read(VAR parms: readWriteDCB); GSOS 2012H;
+
+PROCEDURE Write(VAR parms: readWriteDCB); GSOS 2013H;
+
+PROCEDURE Close(VAR parms: closeDCB); GSOS 2014H;
+
+PROCEDURE Flush(VAR parms: flushDCB); GSOS 2015H;
+
+PROCEDURE SetMark(VAR parms: setMarkDCB); GSOS 2016H;
+
+PROCEDURE GetMark(VAR parms: getMarkDCB); GSOS 2017H;
+
+PROCEDURE SetEOF(VAR parms: setMarkDCB); GSOS 2018H;
+
+PROCEDURE GetEOF(VAR parms: eofDCB); GSOS 2019H;
+
+PROCEDURE SetLevel(VAR parms: levelDCB); GSOS 201AH;
+
+PROCEDURE GetLevel(VAR parms: levelDCB); GSOS 201BH;
+
+PROCEDURE GetDirEntry(VAR parms: dirEntryDCB); GSOS 201CH;
+
+PROCEDURE BeginSession(VAR parms: nullDCB); GSOS 201DH;
+
+PROCEDURE EndSession(VAR parms: nullDCB); GSOS 201EH;
+
+PROCEDURE SessionStatus(VAR parms: statusDCB); GSOS 201FH;
+
+PROCEDURE GetDevNumber(VAR parms: getDevNumDCB); GSOS 2020H;
+
+PROCEDURE Format(VAR parms: formatDCB); GSOS 2024H;
+
+PROCEDURE EraseDisk(VAR parms: formatDCB); GSOS 2025H;
+
+PROCEDURE ResetCache(VAR parms: nullDCB); GSOS 2026H;
+
+PROCEDURE GetName(VAR parms: getNameDCB); GSOS 2027H;
+
+PROCEDURE GetBootVol(VAR parms: getNameDCB); GSOS 2028H;
+
+PROCEDURE Quit(VAR parms: quitDCB); GSOS 2029H;
+
+PROCEDURE GetVersion(VAR parms: osVersionDCB); GSOS 202AH;
+
+PROCEDURE GetFSTInfo(VAR parms: fstInfoDCB); GSOS 202BH;
+
+PROCEDURE DInfo(VAR parms: dInfoDCB); GSOS 202CH;
+
+PROCEDURE DStatus(VAR parms: dStatusDCB); GSOS 202DH;
+
+PROCEDURE DControl(VAR parms: dStatusDCB); GSOS 202EH;
+
+PROCEDURE DRead(VAR parms: devReadWriteDCB); GSOS 202FH;
+
+PROCEDURE DWrite(VAR parms: devReadWriteDCB); GSOS 2030H;
+
+PROCEDURE BindInt(VAR parms: bindIntDCB); GSOS 2031H;
+
+PROCEDURE UnbindInt(VAR parms: unbindIntDCB); GSOS 2032H;
+
+(*
+  The following routines are found in the implementation module.  They are
+  basically support routines to make life easier when using GSOS under
+  Modula-2.
+*)
+
+PROCEDURE StringToGSOSInString(VAR string:    ARRAY OF CHAR;
+                               VAR pathname:  GSOSInString);
+(*
+  OPERATION:
+    Will convert a standard Modula-2 string to a GS/OS Input String.
+
+    Note: "string" is passed VAR for efficiency reasons only.  It is not
+    changed.
+*)
+
+PROCEDURE StringToGSOSOutString(VAR string:   ARRAY OF CHAR;
+                                VAR pathname:  GSOSOutString);
+(*
+  OPERATION:
+    Will convert a standard Modula-2 string to a GS/OS Output String.
+
+    Note: "string" is passed VAR for efficiency reasons only.  It is not
+    changed.
+*)
+
+PROCEDURE GSOSInStringToString(VAR pathname:  GSOSInString;
+                               VAR string:    ARRAY OF CHAR);
+(*
+  OPERATION:
+    Will convert a GS/OS Input String to a standard Modula-2 string.
+
+    Note: "pathname" is passed VAR for efficiency reasons only.  It is not
+    changed.
+*)
+
+PROCEDURE GSOSOutStringToString(VAR pathname:  GSOSOutString;
+                                VAR string:    ARRAY OF CHAR);
+(*
+  OPERATION:
+    Will convert a GS/OS Output String to a standard Modula-2 string.
+
+    Note: "pathname" is passed VAR for efficiency reasons only.  It is not
+    changed.
+*)
+
+END GSOSInterface.

@@ -1,0 +1,212 @@
+DEFINITION MODULE EZControls;
+
+FROM Common IMPORT Ref;
+FROM ControlManager IMPORT CtlHandle;
+FROM ListManager IMPORT MemberDrawProc;
+FROM MemoryManager IMPORT Handle;
+FROM QuickDrawII IMPORT GrafPort, GrafPortPtr;
+FROM SYSTEM IMPORT ADDRESS;
+FROM WindowManager IMPORT TaskRec;
+
+CONST
+  lineEditAllKeys         = 0;
+  lineEditAlphaNumeric    = 1;
+  lineEditAlphabetic      = 2;
+  lineEditNumeric         = 3;
+  lineEditPathname        = 4;
+
+TYPE
+  aEZGrafPort =
+    RECORD
+      grafPort:       GrafPort;
+      wDefProc:       LONGINT;
+      wRefCon:        LONGINT;
+      wContDraw:      LONGINT;
+      wReserved:      LONGINT;
+      wStructRgn:     Handle;
+      wContRgn:       Handle;
+      wUpdateRgn:     Handle;
+      wControl:       CtlHandle;
+      wFrameControl:  CtlHandle;
+      wFrame:         INTEGER;
+    END;
+  pEZGrafPort = POINTER TO aEZGrafPort;
+
+PROCEDURE EZDialogEvent(VAR MultiClick: CARDINAL): LONGINT;
+(*
+  EZDialogEvent This function calls TaskMaster to handle any system events,
+  ~~~~~~~~~~~~~ returns the item ID of the control that was hit. If an event
+  occurs outside a control, then the item ID returned it zero. EZDialogEvent
+  also takes care of things which TaskMaster does not, such as the cut,
+  and paste facilities for a lineEdit control.
+
+  MultiClick  - Upon returning, this parameter holds the value returned by
+                Taskmaster in the ClickCount field of the task record, thus
+                enabling the application to determine whether a double or
+                triple click has occured.
+*)
+
+PROCEDURE EZAnyEvent(VAR AnyEventRecord:  TaskRec;
+                     VAR EventHandled:    BOOLEAN;
+                         CheckMenus:      BOOLEAN): LONGINT;
+(*
+  EZAnyEvent This function calls TaskMaster to handle any system events, and
+  ~~~~~~~~~~ returns one of several types of values, as follows:
+
+  ControlID  - If an event has occured inside a control, then the ID of that
+               control is returned.
+  MenuItemID - If a menu item has been selected, then the ID of the selected
+               menu is returned.
+  Event      - If neither a control or a menu has been selected, then the
+               function returns the raw event information in the same format
+               as TaskMaster.
+
+  Parameters are as follows:
+
+  AnyEventRecord - An extended event record in which the event information
+                   is returned.
+  CheckMenus     - A boolean flag allowing the application to lock out the
+                   use of menus.  True will allow menu selection.  False
+                   will not.
+*)
+
+PROCEDURE EZDAEvent(VAR AnyEventRecord: TaskRec;
+                    VAR EventHandled:   BOOLEAN;
+                        CheckMenus:     BOOLEAN): LONGINT;
+(*
+  EZDAEvent  This function calls TaskMaster to handle any system events, and
+  ~~~~~~~~~  returns one of several types of values, as follows:
+
+             Essentially, this function is identical to EZAnyEvent, except
+             for the fact that this function calls TaskMasterDA and not the
+             normal TaskMaster entry point.  As such, this function is
+             designed specifically for use with NDA's.
+
+  ControlID  - If an event has occured inside a control, then the ID of that
+               control is returned.
+  MenuItemID - If a menu item has been selected, then the ID of the selected
+               menu is returned.
+  Event      - If neither a control or a menu has been selected, then the
+               function returns the raw event information in the same format
+               as TaskMaster.
+
+  Parameters are as follows:
+
+  AnyEventRecord - An extended event record in which the event information
+                   is returned.
+  CheckMenus     - A boolean flag allowing the application to lock out the
+                   use of menus.  True will allow menu selection.  False
+                   will not.
+*)
+
+
+PROCEDURE EZNextMember(inItem:  CARDINAL;
+                       inID:    LONGINT): CARDINAL;
+(*
+  EZNextMember  Returns the next member number in the extended list contol
+  ~~~~~~~~~~~~  specified by inID.
+
+  inItem   -  Is the first member in the list at which to start searching
+              for another selected item.
+  inID     -  Is the item ID of the extended list control.
+*)
+
+PROCEDURE EZSelectMember(inItem:  CARDINAL;
+                         inID:    LONGINT);
+(*
+  EZSelectMember  Selects the specified member in the extended list contol
+  ~~~~~~~~~~~~~~  specified by inID.
+
+  inItem   -  Is the number of the member to be selected.
+  inID     -  Is the item ID of the extended list control.
+*)
+
+PROCEDURE EZSortList(inID:  LONGINT);
+(*
+  EZSortList  Will sort the specified list using the default sort routine.
+  ~~~~~~~~~~
+  inID     - The Item ID of the list control.
+*)
+
+PROCEDURE EZNewList(inDrawProc: MemberDrawProc;
+                    inStart:    CARDINAL;
+                    inList:     Ref;
+                    inSize:     CARDINAL;
+                    inSelect:   CARDINAL;
+                    inID:       LONGINT);
+(*
+  EZNewList  Will place register the new list contents with the list manager
+  ~~~~~~~~~  and sort it using the default sort routine, before finally
+             selecting the specified member.
+
+  inDrawProc - A pointer to a custom draw member routine.
+  inStart    - This is the first member to be displayed in the list window.
+  inList     - The new list structure to be passed to NewList2.
+  inSize     - The number of members in the list.
+  inSelect   - The number of the member to be selected.
+  inID       - The Item ID of the list control.
+*)
+
+PROCEDURE RadioButtonOn(inID: LONGINT): BOOLEAN;
+(*
+  RadioButtonOn  Returns a boolean value indicating whether the radio button
+  ~~~~~~~~~~~~~  specified by inID is turned on. A TRUE result indicates ON.
+*)
+
+PROCEDURE CheckBoxOn(inID: LONGINT): BOOLEAN;
+(*
+  CheckBoxOn  Returns a boolean value indicating whether the check box
+  ~~~~~~~~~~  specified by inID is turned on. A TRUE result indicates ON.
+*)
+
+PROCEDURE SetRadioButton(inValue: BOOLEAN;
+                         inID:    LONGINT);
+(*
+  SetRadioButton  Sets the Radio Button specified by inID to either an ON or
+  ~~~~~~~~~~~~~~  OFF state.
+
+  inValue      -  This parameter may be either TRUE or FALSE.  FALSE will turn
+                  the button off.  TRUE will turn the button on.
+*)
+
+PROCEDURE SetCheckBox(inValue:  BOOLEAN;
+                      inID:     LONGINT);
+(*
+  SetCheckBox  Sets the Check Box specified by inID to either an ON or OFF
+  ~~~~~~~~~~~  state.
+
+  inValue      -  This parameter may be either TRUE or FALSE.  FALSE will turn
+                  the button off.  TRUE will turn the button on.
+*)
+
+PROCEDURE Deactivate(inID: LONGINT);
+(*
+  Deactivate  Will deactivate the specified extended control.
+  ~~~~~~~~~~
+*)
+
+PROCEDURE Activate(inID: LONGINT);
+(*
+  Activate  Will deactivate the specified extended control.
+  ~~~~~~~~
+*)
+
+PROCEDURE EZDrawControls;
+(*
+  EZDrawControls  This routine simply makes to DrawControls, passing the
+  ~~~~~~~~~~~~~~  current port to it.  It may be used when creating a window
+                  with nothing but controls in it, for which you need a
+                  refresh routine.
+*)
+
+PROCEDURE EZUpdateWindow(WindowPtr: GrafPortPtr);
+(*
+  EZUpdateWindow  This procedure is an assembly routine that obtains the
+  ~~~~~~~~~~~~~~  address of the specified windows content drawing procedure
+  so that it may be called, to effect the update of the specified window.
+  normal dialog.
+
+  WindowPtr    - This is the pointer to the window or grafport to be updated
+*)
+
+END EZControls.

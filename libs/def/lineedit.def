@@ -1,0 +1,154 @@
+(*$NoImp*)
+DEFINITION MODULE LineEdit;
+(*
+  Line Edit Tool Set Interface File
+*)
+
+FROM EventManager IMPORT
+  EventRecordPtr, EventModifier;
+FROM MemoryManager IMPORT
+  Handle;
+FROM QuickDrawII IMPORT
+  Rect, RectPtr, GrafPortPtr;
+FROM SYSTEM IMPORT
+  ADDRESS;
+
+CONST
+  (* 
+    Justification 
+  *)
+  leJustLeft      =   0;      (* left justify       *)
+  leJustCenter    =   1;      (* center             *)
+  leJustRight     =  -1;      (* right justify      *)
+  leJustFill      =   2;      (* fill justification *)
+
+  (*
+    LEClassifyKey results
+  *)
+  leKeyIsSpecial    = 8000H;
+  leKeyIsNumber     = 4000H;
+  leKeyIsHex        = 2000H;
+  leKeyIsAlpha      = 1000H;
+  leKeyIsNonControl = 0800H;
+
+TYPE
+  HiliteProc = PROCEDURE(RectPtr);
+  DrawCaretProc = PROCEDURE(RectPtr);
+
+  LERec = 
+    RECORD
+      leLineHandle: Handle;
+      leLength:     INTEGER;
+      leMaxLength:  INTEGER;
+      leDestRect:   Rect;
+      leViewRect:   Rect;
+      lePort:       GrafPortPtr;
+      leLineHite:   INTEGER;
+      leBaseHite:   INTEGER;
+      leSelStart:   INTEGER;
+      leSelEnd:     INTEGER;
+      leActFlag:    CARDINAL;
+      leCarAct:     CARDINAL;
+      leCarOn:      CARDINAL;
+      leCarTime:    LONGINT;
+      leHiliteHook: HiliteProc;
+      leCaretHook:  DrawCaretProc;
+      leJust:       INTEGER;
+      lePWChar:     CARDINAL;
+    END;
+  LERecPtr = POINTER TO LERec;
+  LERecHandle = POINTER TO LERecPtr;
+
+  ValidScrapLength = [0..256];
+
+PROCEDURE LEBootInit; TOOL 0114H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE LEStartUp(userID, dPageAddr: CARDINAL); TOOL 0214H;
+
+PROCEDURE LEShutDown; TOOL 0314H;
+
+PROCEDURE LEVersion(): CARDINAL; TOOL 0414H;
+
+PROCEDURE LEReset; TOOL 0514H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE LEStatus(): BOOLEAN; TOOL 0614H;
+
+PROCEDURE GetLeDefProc(): ADDRESS; TOOL 2414H;
+
+PROCEDURE LEActivate(LEHandle: LERecHandle); TOOL 0F14H;
+
+PROCEDURE LEClassifyKey(theEvent: EventRecordPtr): CARDINAL; TOOL 2514H;
+
+PROCEDURE LEClick(theEvent: EventRecordPtr; LEHandle: LERecHandle); TOOL 0D14H;
+
+PROCEDURE LECopy(LEHandle: LERecHandle); TOOL 1314H;
+
+PROCEDURE LECut(LEHandle: LERecHandle); TOOL 1214H;
+
+PROCEDURE LEDeactivate(LEHandle: LERecHandle); TOOL 1014H;
+
+PROCEDURE LEDelete(LEHandle: LERecHandle); TOOL 1514H;
+
+PROCEDURE LEDispose(LEHandle: LERecHandle); TOOL 0A14H;
+
+PROCEDURE LEFromScrap; TOOL 1914H;
+
+PROCEDURE LEGetScrapLen(): CARDINAL; TOOL 1C14H;
+
+PROCEDURE LEGetTextHand(LEHandle: LERecHandle): Handle; TOOL 2214H;
+
+PROCEDURE LEGetTextLen(LEHandle: LERecHandle): CARDINAL; TOOL 2314H;
+
+PROCEDURE LEIdle(LEHandle: LERecHandle); TOOL 0C14H;
+
+PROCEDURE LEInsert(theText:     ADDRESS; 
+                   textLength:  INTEGER;
+                   LEHandle:    LERecHandle); TOOL 1614H;
+
+PROCEDURE LEKey(key:        CARDINAL;
+                modifiers:  EventModifier;
+                LEHandle:   LERecHandle); TOOL 1114H;
+
+PROCEDURE LENew(destRectPtr:  RectPtr;
+                viewRectPtr:  RectPtr; 
+                maxTextLen:   CARDINAL): LERecHandle; TOOL 0914H;
+
+PROCEDURE LEPaste(LEHandle: LERecHandle); TOOL 1414H;
+
+PROCEDURE LEScrapHandle(): Handle; TOOL 1B14H;
+
+PROCEDURE LESetCaret(caretProc: DrawCaretProc; LEHandle: LERecHandle); TOOL 1F14H;
+
+PROCEDURE LESetHilite(hiliteProc: HiliteProc; LEHandle: LERecHandle); TOOL 1E14H;
+
+PROCEDURE LESetJust(just: INTEGER; LEHandle: LERecHandle); TOOL 2114H;
+
+PROCEDURE LESetScrapLen(newLength: ValidScrapLength); TOOL 1D14H;
+
+PROCEDURE LESetSelect(selStart, selEnd: INTEGER; LEHandle: LERecHandle); TOOL 0E14H;
+
+PROCEDURE LESetText(theText:    ADDRESS; 
+                    textLength: CARDINAL;
+                    LEHandle:   LERecHandle); TOOL 0B14H;
+
+PROCEDURE LETextBox(theText:    ADDRESS; 
+                    textLength: CARDINAL;
+                    rectPtr:    RectPtr; 
+                    just:       INTEGER); TOOL 1814H;
+
+PROCEDURE LETextBox2(theText:     ADDRESS; 
+                     textLength:  CARDINAL;
+                     box:         RectPtr;
+                     just:        INTEGER); TOOL 2014H;
+
+PROCEDURE LEToScrap; TOOL 1A14H;
+
+PROCEDURE LEUpdate(LEHandle: LERecHandle); TOOL 1714H;
+
+END LineEdit.

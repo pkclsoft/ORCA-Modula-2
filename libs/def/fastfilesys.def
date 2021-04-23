@@ -1,0 +1,178 @@
+DEFINITION MODULE FastFileSystem;
+
+(*
+  This module supplies a simple interface to the Byteworks FastFile system.
+
+  It does not currently support the entire system. The following actions are
+  supported:
+
+  Action                Procedure
+  ~~~~~~~~~~~~~~~~~~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  Load                  FFLoad
+  Indexed Load          FFILoad
+  Load from Memory      FFMLoad
+  Delete                FFDelete
+  Purge                 FFPurge
+
+  In addition to this, a simple read mechanism is supplied, to allow the
+  programmer to read a loaded file.  It is also possible to move randomly
+  within the file using GetPos/SetPos.
+
+  Read operations are supported.  Any operations allowing the writing of a
+  FastFile are not supported.
+*)
+
+FROM GSOSInterface IMPORT
+  GSOSOutString;
+FROM MemoryManager IMPORT
+  Handle;
+FROM OrcaShell IMPORT
+  FastFileDCB;
+FROM SYSTEM IMPORT
+  ADDRESS, WORD;
+
+TYPE
+  Response = (done, notdone);
+
+  Mode = (reading, writing);
+
+  pByte =
+    RECORD
+      CASE :CARDINAL OF
+        0:  a:  ADDRESS;
+      | 1:  b:  POINTER TO BYTE;
+      | 2:  c:  POINTER TO CHAR;
+      END;
+    END;
+
+  File =
+    RECORD
+      open:       BOOLEAN;
+      mode:       Mode;
+      parms:      FastFileDCB;
+      res:        Response;       (* response to last file activity *)
+      nameString: GSOSOutString;  (* the files full pathname *)
+
+      (* for read operations *)
+
+      eof:        BOOLEAN;        (* TRUE if true eof is detected *)
+      currpos:    LONGINT;        (* current position of file mark *)
+      current:    RECORD
+                    CASE :CARDINAL OF
+                      0:  c:  POINTER TO CHAR;
+                      |
+                      1:  a:  ADDRESS;
+                      |
+                      2:  w:  POINTER TO WORD;
+                    END;
+                  END;
+      (* for write operations *)
+
+      handle:         Handle;         (* the handle of the memory used by the file *)
+      size:           LONGCARD;       (* the size in bytes of the file *)
+      lastByte:       ADDRESS;        (* the last byte available in the file *)
+      nextByte:       pByte;          (* address of next byte to be wrtten to *)
+    END;
+
+PROCEDURE Close(VAR f:            File;
+                    discardFile:  BOOLEAN;
+                    saveToDisk:   BOOLEAN);
+(*
+  OPERATION:
+    This procedure closes the 'file' if it is open.
+
+    If discardFile is TRUE, then it simply disposes of any memory taken up
+    by the file.
+
+    If discardFile is FALSE, then saveToDisk is checked.  If TRUE, the memory
+    file is written to disk.  Finally, the 'file' is given to FastFile, which
+    leaves the file in memory, but removes it from our care.
+*)
+
+PROCEDURE Delete(VAR f: File; filename: ARRAY OF CHAR);
+(*
+  OPERATION:
+    Delete the specified file from the FastFile system.
+  NOTE:
+    This requires the file to have been loaded first.  The file is _NOT_ deleted
+    from the disk.
+*)
+
+PROCEDURE GetPos(VAR f: File; VAR pos: LONGINT);
+(*
+  OPERATION:
+    Return the current offset into the file.
+*)
+
+PROCEDURE ILoad(VAR f: File; index: CARDINAL);
+(*
+  OPERATION:
+    Load the file specified by "index".  If the file is not loaded then
+    return a response of notDone.
+*)
+
+PROCEDURE Load(VAR f: File; filename: ARRAY OF CHAR);
+(*
+  OPERATION:
+    Load the file specified by "filename".  If the file is not loaded then
+    return a response of notDone.
+*)
+
+PROCEDURE LookupNew(VAR f:    File;
+                        name: ARRAY OF CHAR);
+(*
+  OPERATION:
+    Allocate the initial chunk of memory for the file, and initialise the 
+    RefFileID accordingly.
+*)
+
+PROCEDURE MLoad(VAR f: File; filename: ARRAY OF CHAR);
+(*
+  OPERATION:
+    Load the file specified by "filename".
+
+    This call does not try and locate the file on the disk.  If the file has
+    not previously been loaded into memory, then it returns a response of
+    notDone;
+*)
+
+PROCEDURE Purge(VAR f: File);
+(*
+  OPERATION:
+    Mark the file as purgeable.
+*)
+
+PROCEDURE ReadChar(VAR f: File; VAR ch: CHAR);
+(*
+  OPERATION:
+    Read a character from the specified file.
+*)
+
+PROCEDURE ReadWord(VAR f: File; VAR w: WORD);
+(*
+  OPERATION:
+    Read a word from the specified file.
+*)
+
+PROCEDURE SetPos(VAR f: File; pos: LONGINT);
+(*
+  OPERATION:
+    Set the current offset into the file.
+*)
+
+PROCEDURE WriteChar(VAR f:    File;
+                        char: CHAR);
+(*
+  OPERATION:
+    Insert one character into the file.
+*)
+
+PROCEDURE WriteWord(VAR f:    File;
+                        word: WORD);
+(*
+  OPERATION:
+    Insert two bytes into the file.
+*)
+
+
+END FastFileSystem.

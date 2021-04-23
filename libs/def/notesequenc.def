@@ -1,0 +1,80 @@
+(*$NoImp*)
+DEFINITION MODULE NoteSequencer;
+(*
+  Note Sequencer Interface File
+*)
+
+FROM MemoryManager IMPORT
+  Handle;
+FROM SYSTEM IMPORT
+  ADDRESS;
+
+PROCEDURE SeqBootInit; TOOL 011AH;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE SeqStartup(dPageAddr:   CARDINAL;
+                     mode:        CARDINAL;
+                     updateRate:  CARDINAL;
+                     increment:   CARDINAL); TOOL 021AH;
+
+PROCEDURE SeqShutdown; TOOL 031AH;
+
+PROCEDURE SeqVersion(): CARDINAL; TOOL 041AH;
+
+PROCEDURE SeqReset; TOOL 051AH;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE SeqStatus(): BOOLEAN; TOOL 061AH;
+
+PROCEDURE ClearIncr(): CARDINAL; TOOL 0A1AH;
+
+PROCEDURE GetLoc; TOOL 0C1AH;
+(*
+  GetLoc returns 3 words (curPhraseItem, curPattItem, and curLevel), use the
+  following:
+
+  INLINE(PHA, PHA, PHA);
+  GetLoc;
+  INLINE(PLA, PLX);
+  GETREG(Acc, curLevel);
+  GETREG(XReg, curPattItem);
+  INLINE(PLA);
+  GETREG(Acc, curPhraseItem);
+*)
+
+PROCEDURE GetTimer(): CARDINAL; TOOL 0B1AH;
+
+PROCEDURE SeqAllNotesOff; TOOL 0D1AH;
+
+PROCEDURE SetIncr(increment: CARDINAL); TOOL 091AH;
+
+PROCEDURE SetInstTable(instTable: Handle); TOOL 121AH;
+
+PROCEDURE SetTrkInfo(priority, instIndex, trackNum: CARDINAL); TOOL 0E1AH;
+
+PROCEDURE StartInts; TOOL 131AH;
+
+PROCEDURE StartSeq(errHndlrRoutine: ADDRESS;
+                   compRoutine:     ADDRESS;
+                   sequence:        Handle); TOOL 0F1AH;
+(*
+  NOTE that since the system passes info into the error handler and completion
+  routines via the registers, it is not possible to code those routines in
+  Modula 2.
+*)
+
+PROCEDURE StartSeqRel(errHndlrRoutine:  ADDRESS;
+                      compRoutine:      ADDRESS;
+                      sequence:         Handle); TOOL 151AH;
+
+PROCEDURE StepSeq; TOOL 101AH;
+
+PROCEDURE StopInts; TOOL 141AH;
+
+PROCEDURE StopSeq(next: BOOLEAN); TOOL 111AH;
+
+END NoteSequencer.

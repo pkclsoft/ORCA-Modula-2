@@ -1,0 +1,215 @@
+(*$NoImp*)
+DEFINITION MODULE TextTools;
+(*
+  Text Tool Set Interface File
+*)
+
+FROM Common IMPORT
+  String255Ptr;
+FROM SYSTEM IMPORT
+  ADDRESS;
+
+CONST
+  (* 
+    Echo flag values
+  *)
+  noEcho          = 0000H;      (* don't echo chars to output device *)
+  echo            = 0001H;      (* echo chars to output device *)
+
+  (* 
+    Device numbers
+  *)
+  inputDev        = 0000H;
+  outputDev       = 0001H;
+  errorOutputDev  = 0002H;
+
+  (* 
+    Device types 
+  *)
+  basicType       = 0000H;
+  pascalType      = 0001H;
+  ramBased        = 0002H;
+
+PROCEDURE TextBootInit; TOOL 010CH;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE TextStartup; TOOL 020CH;
+
+PROCEDURE TextShutDown; TOOL 030CH;
+
+PROCEDURE TextVersion(): CARDINAL; TOOL 040CH;
+
+PROCEDURE TextReset; TOOL 050CH;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE TextStatus(): BOOLEAN; TOOL 060CH;
+
+PROCEDURE CtlTextDev(deviceNumber, controlCode: CARDINAL); TOOL 160CH;
+
+PROCEDURE ErrWriteBlock(theText: ADDRESS; offset, count: CARDINAL); TOOL 1F0CH;
+
+PROCEDURE ErrWriteChar(theChar: CARDINAL); TOOL 190CH;
+(*
+  Note that the "character" being passed is actually word sized!
+*)
+
+PROCEDURE ErrWriteCString(theCString: ADDRESS); TOOL 210CH;
+
+PROCEDURE ErrWriteLine(theString: ADDRESS); TOOL 1B0CH;
+
+PROCEDURE ErrWriteString(theString: ADDRESS); TOOL 1D0CH;
+
+PROCEDURE GetErrGlobals(): LONGINT; TOOL 0E0CH;
+(* 
+  GetErrGlobals returns 2 words:  
+
+    loWord = OR mask
+    hiWord = AND mask
+
+  Use:
+
+    VAR
+      x:    LONGINT;
+      and:  CARDINAL;
+      or:   CARDINAL;
+    BEGIN
+      x := GetErrGlobals();
+      and := HiWORD(x);
+      or := LoWORD(x);
+*)
+
+PROCEDURE GetErrorDevice; TOOL 140CH;
+(*
+  GetErrorDevice returns 1 INTEGER and 1 LONGINT.
+
+  Use:
+
+    INLINE(PHA, PHA, PHA);
+    GetErrorDevice;
+    INLINE(PLA, PLX);
+    GETREG(CPU, ptrOrSlot);
+    INLINE(PLA);
+    GETREG(Acc, deviceType);
+*)
+
+PROCEDURE GetInGlobals(): LONGINT; TOOL 0C0CH;
+(* 
+  GetInGlobals returns 2 words: 
+
+    loWord = OR mask
+    hiWord = AND mask
+
+  Use:
+
+    VAR
+      x:    LONGINT;
+      and:  CARDINAL;
+      or:   CARDINAL;
+    BEGIN
+      x := GetErrGlobals();
+      and := HiWORD(x);
+      or := LoWORD(x);
+*)
+
+PROCEDURE GetInputDevice; TOOL 120CH;
+(*
+  GetInputDevice returns 1 INTEGER and 1 LONGINT.
+
+  Use:
+
+    INLINE(PHA, PHA, PHA);
+    GetInputDevice;
+    INLINE(PLA, PLX);
+    GETREG(CPU, ptrOrSlot);
+    INLINE(PLA);
+    GETREG(Acc, deviceType);
+*)
+
+PROCEDURE GetOutGlobals(): LONGINT; TOOL 0D0CH;
+(* 
+  GetOutGlobals returns 2 words:
+
+    loWord = OR mask
+    hiWord = AND mask
+
+  Use:
+
+    VAR
+      x:    LONGINT;
+      and:  CARDINAL;
+      or:   CARDINAL;
+    BEGIN
+      x := GetErrGlobals();
+      and := HiWORD(x);
+      or := LoWORD(x);
+*)
+
+PROCEDURE GetOutputDevice; TOOL 130CH;
+(*
+  GetOutputDevice returns 1 INTEGER and 1 LONGINT.
+
+  Use:
+
+    INLINE(PHA, PHA, PHA);
+    GetOutputDevice;
+    INLINE(PLA, PLX);
+    GETREG(CPU, ptrOrSlot);
+    INLINE(PLA);
+    GETREG(Acc, deviceType);
+*)
+
+PROCEDURE InitTextDev(deviceNum: CARDINAL); TOOL 150CH;
+
+PROCEDURE ReadChar(echoFlag: BOOLEAN): CARDINAL; TOOL 220CH;
+(*
+  Note that this does NOT return a proper character!  It returns a word sized
+  value, with the actual character in the LSB.
+*)
+
+PROCEDURE ReadLine(bufferPtr: ADDRESS; 
+                   maxCount:  CARDINAL; 
+                   endOfLine: CARDINAL;
+                   echoFlag:  BOOLEAN): CARDINAL; TOOL 240CH;
+(*
+  Note that the "endOfLine" character is actually a word sized value.
+*)
+
+PROCEDURE SetErrGlobals(ANDMask, ORMask: CARDINAL); TOOL 0B0CH;
+
+PROCEDURE SetErrorDevice(deviceType: CARDINAL; ptrOrSlot: LONGINT); TOOL 110CH;
+
+PROCEDURE SetInGlobals(ANDMask, ORMask: CARDINAL); TOOL 090CH;
+
+PROCEDURE SetInputDevice(deviceType: CARDINAL; ptrOrSlot: LONGINT); TOOL 0F0CH;
+
+PROCEDURE SetOutGlobals(ANDMask, ORMask: CARDINAL); TOOL 0A0CH;
+
+PROCEDURE SetOutputDevice(deviceType: CARDINAL; ptrOrSlot: LONGINT); TOOL 100CH;
+
+PROCEDURE StatusTextDev(deviceNum, requestCode: CARDINAL); TOOL 170CH;
+
+PROCEDURE TextReadBlock(bufferPtr:  ADDRESS; 
+                        offset:     CARDINAL;
+                        blockSize:  CARDINAL;
+                        echoFlag:   BOOLEAN); TOOL 230CH;
+
+PROCEDURE TextWriteBlock(theText: ADDRESS; 
+                         offset:  CARDINAL;
+                         count:   CARDINAL); TOOL 1E0CH;
+
+PROCEDURE WriteChar(theChar: CARDINAL); TOOL 180CH;
+(*
+  Note that the "character" being passed is actually word sized!
+*)
+
+PROCEDURE WriteCString(theCString: ADDRESS); TOOL 200CH;
+
+PROCEDURE WriteLine(theString: String255Ptr); TOOL 1A0CH;
+
+PROCEDURE WriteString(theString: String255Ptr); TOOL 1C0CH;
+
+END TextTools.

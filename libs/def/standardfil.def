@@ -1,0 +1,223 @@
+(*$NoImp*)
+DEFINITION MODULE StandardFile;
+(*
+  Standard File Operations Tool Set Interface File
+*)
+
+FROM Common IMPORT
+  String255, String255Ptr, Ref;
+FROM DialogManager IMPORT
+  DialogTemplate, DialogTemplatePtr;
+FROM GSOSInterface IMPORT
+  dirEntryDCB;
+FROM MemoryManager IMPORT
+  Handle;
+FROM QuickDrawII IMPORT
+  GrafPortPtr;
+FROM SYSTEM IMPORT
+  ADDRESS, BYTE;
+
+CONST
+  (*
+    Filter procedure results.
+  *)
+  noDisplay       =   0000H;      (* don't display file                      *)
+  noSelect        =   0001H;      (* display file, but don't allow selection *)
+  displaySelect   =   0002H;      (* display file and allow selection        *)
+
+TYPE
+  TypeList =
+    RECORD
+      numEntries: BYTE;
+      fileType:   ARRAY [1..10] OF BYTE;    (* Array can be expanded *)
+    END;
+  TypeListPtr = POINTER TO TypeList;
+
+  PascalFileName =
+    RECORD
+      length: BYTE;
+      name:   ARRAY [0..14] OF CHAR;
+    END;
+
+  ReplyRecord =
+    RECORD
+      good:         BOOLEAN;
+      fileType:     CARDINAL;
+      auxFileType:  CARDINAL;
+      fileName:     PascalFileName;
+      fullPathName: String255;
+    END;
+
+  ReplyRecordv5 =
+    RECORD
+      good:         BOOLEAN;
+      type:         CARDINAL;
+      auxType:      LONGINT;
+      nameRefDesc:  CARDINAL;
+      nameRef:      Ref;
+      pathRefDesc:  CARDINAL;
+      pathRef:      Ref;
+    END;
+
+  TypeRec =
+    RECORD
+      flags:        CARDINAL;
+      fileType:     CARDINAL;
+      auxFileType:  LONGINT;
+    END;
+
+  TypeListv5 = 
+    RECORD
+      entryCount: CARDINAL;
+      entryArray: ARRAY [1..10] OF TypeRec;      (* change ARRAY size *)
+    END;                                         (*   as needed       *)
+  TypeListv5Ptr = POINTER TO TypeListv5;
+
+  MultiReplyRecord =
+    RECORD
+      good:         CARDINAL;
+      namesHandle:  Handle;
+    END;   
+
+  FileDirectoryEntry =
+    RECORD
+      storageType:    BYTE;
+      name:           PascalFileName;
+      fileType:       BYTE;
+      keyPointer:     CARDINAL;
+      blocksUsed:     CARDINAL;
+      EOF:            ARRAY [0..2] OF BYTE;
+      createDateTime: LONGINT;
+      version:        BYTE;
+      minVersion:     BYTE;
+      access:         BYTE;
+      auxType:        CARDINAL;
+      modDateTime:    LONGINT;
+      headerPointer:  CARDINAL;
+    END;
+  FileDirectoryEntryPtr = POINTER TO FileDirectoryEntry;
+
+  DirEntryDCBPtr = POINTER TO dirEntryDCB;
+
+  FilterProc = PROCEDURE(FileDirectoryEntryPtr): CARDINAL;
+  FilterProcv5 = PROCEDURE(DirEntryDCBPtr);
+
+  ItemHit = POINTER TO CARDINAL;
+
+  DialogHookProc = PROCEDURE(GrafPortPtr, ItemHit);
+
+PROCEDURE SFBootInit; TOOL 0117H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE SFStartup(userID, dPageAddr: CARDINAL); TOOL 0217H;
+
+PROCEDURE SFShutDown; TOOL 0317H;
+
+PROCEDURE SFVersion(): CARDINAL; TOOL 0417H;
+
+PROCEDURE SFReset; TOOL 0517H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE SFStatus(): BOOLEAN; TOOL 0617H;
+
+PROCEDURE SFAllCaps(allCapsFlag: BOOLEAN); TOOL 0D17H;
+
+PROCEDURE SFGetFile(    whereX:       CARDINAL;
+                        whereY:       CARDINAL;
+                        prompt:       String255Ptr;
+                        filterProc:   FilterProc;
+                        theTypeList:  TypeListPtr;
+                    VAR theReply:     ReplyRecord); TOOL 0917H;
+
+PROCEDURE SFGetFile2(    whereX:        CARDINAL;
+                         whereY:        CARDINAL;
+                         promptRefDesc: CARDINAL;
+                         promptRef:     Ref;
+                         filterProcPtr: FilterProcv5;
+                         theTypeList:   TypeListv5Ptr;
+                     VAR theReply:      ReplyRecordv5); TOOL 0E17H;
+
+PROCEDURE SFMultiGet2(    whereX:         CARDINAL;
+                          whereY:         CARDINAL;
+                          promptVerb:     CARDINAL;
+                          promptRef:      Ref;
+                          filterProcPtr:  FilterProcv5;
+                          theTypeList:    TypeListv5Ptr;
+                      VAR theReply:       MultiReplyRecord); TOOL 1417H;
+       
+PROCEDURE SFPGetFile(    whereX:            CARDINAL;
+                         whereY:            CARDINAL;
+                         prompt:            String255Ptr;
+                         filterProc:        FilterProc;
+                         theTypeList:       TypeListPtr;
+                         theDialogTemplate: DialogTemplatePtr;
+                         dialogHookPtr:     DialogHookProc;
+                     VAR theReply:          ReplyRecord); TOOL 0B17H;
+
+PROCEDURE SFPGetFile2(    whereX:           CARDINAL;
+                          whereY:           CARDINAL;
+                          itemDrawPtr:      ADDRESS;
+                          promptRefDesc:    CARDINAL;
+                          promptRef:        Ref;
+                          filterProcPtr:    FilterProcv5;
+                      VAR theTypeList:      TypeListv5;
+                      VAR dlgTemp:          DialogTemplate;
+                          dialogHookPtr:    DialogHookProc;
+                      VAR theReply:         ReplyRecordv5); TOOL 1017H;
+
+PROCEDURE SFPMultiGet2(    whereX:          CARDINAL;
+                           whereY:          CARDINAL;
+                           itemDrawPtr:     ADDRESS;
+                           promptRefDesc:   CARDINAL; 
+                           promptRef:       Ref;
+                           filterProcPtr:   FilterProcv5;
+                       VAR theTypeList:     TypeListv5;
+                       VAR dlgTemp:         DialogTemplate;
+                           dialogHookPtr:   DialogHookProc;
+                       VAR theReply:        MultiReplyRecord); TOOL 1517H;
+       
+PROCEDURE SFPPutFile(    whereX:            CARDINAL;
+                         whereY:            CARDINAL; 
+                         prompt:            String255Ptr;
+                         origName:          String255Ptr;
+                         maxLen:            CARDINAL;
+                         theDialogTemplate: DialogTemplatePtr;
+                         dialogHookPtr:     DialogHookProc;
+                     VAR theReply:          ReplyRecord); TOOL 0C17H;
+
+PROCEDURE SFPPutFile2(    whereX:           CARDINAL;
+                          whereY:           CARDINAL;
+                          itemDrawPtr:      ADDRESS;
+                          promptRefDesc:    CARDINAL;
+                          promptRef:        Ref;
+                          origNameRefDesc:  CARDINAL;
+                          origNameRef:      Ref;
+                      VAR dlgTemp:          DialogTemplate;
+                          dialogHookPtr:    DialogHookProc;
+                      VAR theReply:         ReplyRecordv5); TOOL 1117H;
+       
+PROCEDURE SFPutFile(    whereX:             CARDINAL;
+                        whereY:             CARDINAL;
+                        prompt:             String255Ptr;
+                        origName:           String255Ptr;
+                        maxLen:             CARDINAL;
+                    VAR theReply:           ReplyRecord); TOOL 0A17H;
+
+PROCEDURE SFPutFile2(    whereX:            CARDINAL;
+                         whereY:            CARDINAL;
+                         promptRefDesc:     CARDINAL;
+                         promptRef:         Ref;
+                         origNameRefDesc:   CARDINAL;
+                         origNameRef:       Ref;
+                     VAR theReply:          ReplyRecordv5); TOOL 0F17H;
+            
+PROCEDURE SFReScan(    filterProcPtr: FilterProcv5;
+                   VAR theTypeList:   TypeListv5); TOOL 1317H;
+
+PROCEDURE SFShowInvisible(invisibleState: BOOLEAN): BOOLEAN; TOOL 1217H;
+
+END StandardFile.

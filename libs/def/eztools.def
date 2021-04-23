@@ -1,0 +1,94 @@
+DEFINITION MODULE EZTools;
+(*
+  EZTools
+
+  This unit contains a number of tool related routines that can make life
+  much easier on the application, in that they take care of the loading and
+  unloading of the various tool sets.
+
+  Copyright 1992, 1993
+  EZ-Soft
+
+  Written by: P.C. Easdown
+*)
+
+FROM Common IMPORT SCB;
+FROM ToolLocator IMPORT StartStopRecordPtr;
+
+CONST
+  (*
+    Toolbox number constants for use in Tool Locator type calls.
+  *)
+  ToolLocator     = 1;
+  MemoryManager   = 2;
+  MiscToolSet     = 3;
+  QuickDrawII     = 4;
+  DeskManager     = 5;
+  EventManager    = 6;
+  Scheduler       = 7;
+  SoundToolSet    = 8;
+  ADBToolSet      = 9;
+  SANEToolSet     = 10;
+  IntegerMath     = 11;
+  TextToolSet     = 12;
+  ReservedSet     = 13;
+  WindowManager   = 14;
+  MenuManager     = 15;
+  ControlManager  = 16;
+  SystemLoader    = 17;
+  QuickDrawIIAux  = 18;
+  PrintManager    = 19;
+  LineEditToolSet = 20;
+  DialogManager   = 21;
+  ScrapManager    = 22;
+  StandardFile    = 23;
+  NotAvailable    = 24;
+  NoteSynthesizer = 25;
+  NoteSequencer   = 26;
+  FontManager     = 27;
+  ListManager     = 28;
+  ACEToolSet      = 29;
+  ResourceManager = 30;
+  MIDIToolSet     = 31;
+  TextEditToolSet = 34;
+
+VAR
+  EZGraphicsActive: BOOLEAN;
+
+PROCEDURE EZStartDesk(inMasterSCB: SCB): StartStopRecordPtr;
+(*
+  Similar to the StartDesk routine in ORCA/Pascal, except that it loads almost
+  every tool in existance and requires the application to supply the master
+  SCB, rather than a resolution value. This is so that the application is able
+  to set some of the other bits that have been defined with version 3.1 of 
+  quickdraw.  The other major difference, is that the application is required
+  to mainatin a pointer that is returned from the function, so that it may 
+  pass it to EZEndDesk when shutting down.
+*)
+
+PROCEDURE EZEndDesk(inStartStopRecord: StartStopRecordPtr);
+(*
+  Will shut down all of the tools started by EZStartDesk.  This procedure must
+  be supplied with the startstop record pointer that was returned from 
+  EZStartDesk.
+*)
+
+PROCEDURE EZStartGraph(inMasterSCB: SCB): StartStopRecordPtr;
+(*
+  Similar to the StartGraph routine in ORCA/Pascal, except that it loads 
+  quickdraw auxilliary and the event manager as well.  The application must
+  supply the master SCB, rather than a resolution value so that the 
+  application is able to set some of the other bits that have been defined
+  with version 3.1 of quickdraw.  The other major difference, is that the 
+  application is required to mainatin a pointer that is returned from the
+  function, so that it may pass it to EZEndGraph when shutting down
+*)
+
+PROCEDURE EZEndGraph(inStartStopRecord: StartStopRecordPtr);
+(*
+  Will shut down all of the tools started by EZStartGraph.  This procedure 
+  must be supplied with the startstop record pointer that was returned from 
+  EZStartGraph.
+*)
+
+END EZTools.

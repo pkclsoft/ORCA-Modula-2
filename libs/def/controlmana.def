@@ -1,0 +1,810 @@
+(*$NoImp*)
+DEFINITION MODULE ControlManager;
+(*
+  Control Manager Interface File
+*)
+
+FROM Common IMPORT
+  DragFlag, Ref, String255Ptr;
+FROM EventManager IMPORT
+  EventRecordPtr;
+FROM ListManager IMPORT
+  MemberDrawProc;
+FROM MemoryManager IMPORT
+  Handle;
+FROM QuickDrawII IMPORT
+  Rect, RectPtr, Pattern, PatternPtr, GrafPortPtr, Mask, FontHandle,
+  ColorTablePtr;
+FROM SYSTEM IMPORT
+  ADDRESS, BYTE;
+FROM TextEdit IMPORT
+  TextList, TextEditFlags, SuperHandle, TEStyle, WordBreakHookProc,
+  WordWrapHookProc, KeyFilterProc, KeyRecord;
+FROM WindowManager IMPORT
+  TaskRec, TaskRecPtr;
+
+CONST
+  (*
+    The ctlFlag field is a single byte in length.  Therefor, where possible,
+    any constants relating to it are defined as single byte values.
+  *)
+  ctlInVis         =   0080H;         (* invisible mask for any type ctl *)
+
+  (*
+    Simple button control flag values
+  *)
+  simpRound        =   0000H;         (* single outlined, round cornered  *)
+  simpBRound       =   0001H;         (* bold outlined, round cornered    *)
+  simpSquare       =   0002H;         (* single outlined, square cornered *)
+  simpDropSquare   =   0003H;         (* single outlined, square cornered,*)
+                                      (* drop shadowed                    *)
+
+  family           =   007FH;         (* radio button family number *)
+
+  (* 
+    Scroll bar control flag values 
+  *)
+  upFlag           =   0001H;          (* up arrow on scroll bar    *)
+  downFlag         =   0002H;          (* down arrow on scroll bar  *)
+  leftFlag         =   0004H;          (* left arrow on scroll bar  *)
+  rightFlag        =   0008H;          (* right arrow on scroll bar *)
+  horScroll        =   0010H;          (* horizontal scroll bar     *)
+
+  (* Standard Control procedures *)
+  SimpleProc       =   00000000H;      (* simple button standard control *)
+  CheckProc        =   02000000H;      (* simple check-box std control   *)
+  RadioProc        =   04000000H;      (* radio button standard control  *)
+  ScrollProc       =   06000000H;      (* scroll bar standard control    *)
+  GrowProc         =   08000000H;      (* size box standard control      *)
+  MenuProc         =   0A000000H;      (* menu bar *)
+
+  (* 
+    NewControl2 procRef values for standard control types
+  *)
+  cSimpleButtonControl =  80000000H;
+  cCheckControl        =  82000000H;
+  cRadioControl        =  84000000H;
+  cScrollBarControl    =  86000000H;
+  cGrowControl         =  88000000H;
+  cStatTextControl     =  81000000H;
+  cLineEditControl     =  83000000H;
+  cTextEditControl     =  85000000H;
+  cPopUpControl        =  87000000H;
+  cListControl         =  89000000H;
+  cIconButtonControl   =  07FF0001H;
+  cPictureControl      =  8D000000H;
+  cRectangleControl    =  07FF0003H;
+  cThermometerControl  =  07FF0002H;
+
+  (* 
+    DefProc message parameters 
+  *)
+  drawCtl          =   00H;            (* draw the control                   *)
+  calcCRect        =   01H;            (* compute the rectangle to drag      *)
+  testCtl          =   02H;            (* test where mouse button pressed    *)
+  initCtl          =   03H;            (* perform additional control init    *)
+  dispCtl          =   04H;            (* take additional disposal actions   *)
+  posCtl           =   05H;            (* move control's indicator           *)
+  thumbCtl         =   06H;            (* compute parms for dragging indic.  *)
+  dragCtl          =   07H;            (* drag either indicator or control   *)
+  autoTrack        =   08H;            (* called while dragging if -1 passed *)
+                                       (* to TrackControl                    *)
+  newValue         =   09H;            (* called when ctl gets new value     *)
+  setParams        =   0AH;            (* called when ctl gets add. parms    *)
+  moveCtl          =   0BH;            (* called when control moves          *)
+  recSize          =   0CH;            (* return ctl record size in bytes    *)
+
+  ctlHandleEvent    =  0DH;            (* handle keystrokes/menu selections  *)
+  ctlChangeTarget   =  0EH;            (* make control active/inactive       *)
+  ctlChangeBounds   =  0FH;            (* change bounds rectangle of control *)
+  ctlWindChangeSize =  10H;            (* window has grown or been zoomed    *)
+  ctlHandleTab      =  11H;            (* control was tabbed to              *)
+  ctlNotifyMultiPart = 12H;            (* multipart control must be hidden,  *)
+                                       (*   drawn, or shown                  *)
+  ctlWinStateChange =  13H;            (* window state has changed           *)
+
+  (* 
+    axis parameters 
+  *)
+  noConstraint     =   0000H;          (* no movement constraint              *)
+  hAxisOnly        =   0001H;          (* constrain movement to horiz. axis   *)
+  vAxisOnly        =   0002H;          (* constrain movement to vertical axis *)
+
+  (* 
+    part codes 
+  *)
+  noPart           =   00H;            (* no part                  *)
+  simpleButton     =   02H;            (* simple button            *)
+  checkBox         =   03H;            (* check box                *)
+  radioButton      =   04H;            (* radio button             *)
+  upArrow          =   05H;            (* up arrow on scroll bar   *)
+  downArrow        =   06H;            (* down arrow on scroll bar *)
+  pageUp           =   07H;            (* page up                  *)
+  pageDown         =   08H;            (* page down                *)
+  growBox          =   0AH;            (* size box                 *)
+  thumb            =   81H;            (* thumb                    *)
+
+  (* 
+    Hilite control parameters 
+  *)
+  noHilite         =   0000H;          (* hilight control                *)
+  inactiveHilite   =   00FFH;          (* remove hilighting from control *)
+
+  (*
+    fCtlTarget         - ctl is currently active control
+    fCtlCanBeTarget    - ctl can be made active control
+    fCtlWantEvents     - call ctl when SendEventToCtl activated
+    fCtlProcRefNotPtr  - if set, ProcRef = ID of def proc rtn,
+                         else ProcRef = ptr to defproc rtn
+    fCtlTellAboutSize  - notify ctl when window size changes
+    fCtlIsMultiPart    - notify ctl needs to be hidden
+
+    Bits 0 and 1 describe title reference:
+
+    titleIsPtr            = 0;
+    titleIsHandle         = 1;
+    titleIsResource       = 2;
+
+    Bits 2 and 3 describe the color table reference: 
+
+    colorTableIsPtr       = 0;
+    colorTableIsHandle    = 4;
+    colorTableIsResource  = 8;
+  *)
+
+  (*
+    Static text justifications
+  *)
+  leftJustify           = 0;
+  centerJustify         = 1;
+  rightJustify          = -1;
+  fullJustify           = 2;
+
+TYPE
+  (* 
+    Control Manager constants that form the ctlMoreFlags field 
+  *)
+  CtlMoreFlags = (cmfHandle, cmfResource, 
+                  cmfMisc2, cmfMisc3, cmfMisc4,
+                  cmfMisc5, cmfMisc6, cmfMisc7, cmfMisc8, cmfMisc9,
+                  fCtlIsMultiPart, fCtlTellAboutSize, fCtlProcRefNotPtr,
+                  fCtlWantEvents, fCtlCanBeTarget, fCtlTarget);
+  CtlMoreFlagsSet = SET OF CtlMoreFlags;
+
+  BoxColors = 
+    RECORD                  (* check box color table *)
+      boxReserved: CARDINAL;
+      boxNor:      CARDINAL;
+      boxSel:      CARDINAL;
+      boxTitle:    CARDINAL;
+    END;
+  BoxColorsPtr = POINTER TO BoxColors;
+
+  BttnColors = 
+    RECORD                  (* button color table *)
+      bttnOutline: CARDINAL;
+      bttnNorBack: CARDINAL;
+      bttnSelBack: CARDINAL;
+      bttnNorText: CARDINAL;
+      bttnSelText: CARDINAL;
+    END;
+  BttnColorsPtr = POINTER TO BttnColors;
+
+  LimitBlock =
+    RECORD
+      boundRect:  Rect;
+      stopRect:   Rect;
+      axisParam:  CARDINAL;
+      dragPatt:   PatternPtr;
+    END;
+  LimitBlockPtr = POINTER TO LimitBlock;
+
+  RadioColors = 
+    RECORD                 (* radio button color table *)
+      radReserved: CARDINAL;
+      radNor:      CARDINAL;
+      radSel:      CARDINAL;
+      radTitle:    CARDINAL;
+    END;
+  RadioColorsPtr = POINTER TO RadioColors;
+
+  (*
+    List color table
+  *)
+  lColorTable =
+    RECORD
+      listFrameClr:   CARDINAL;
+      listNorTextClr: CARDINAL;
+      listSelTextClr: CARDINAL;
+      listNorBackClr: CARDINAL;
+      listSelBackClr: CARDINAL;
+    END;
+
+  KeyEquivRec =
+    RECORD
+      key1:          BYTE;
+      key2:          BYTE;
+      keyModifiers:  CARDINAL;
+      keyCareBits:   CARDINAL;
+    END;
+
+  (*
+    Control record
+  *)
+  ControlType = (ctlGeneric, ctlBtnRadCheck, ctlIcon, ctlLnEdPicGrow, ctlList, 
+                 ctlPopUp, ctlScroll, ctlStaticText, ctlTextEdit);
+
+  CtlRecPtr = POINTER TO CtlRec;
+  CtlHandle = POINTER TO CtlRecPtr;
+
+  CtlActionProc = PROCEDURE(CARDINAL, CtlHandle);
+
+  CtlRec =
+    RECORD
+      ctlNext:   CtlHandle;
+      ctlOwner:  GrafPortPtr;
+      ctlRect:   Rect;
+      ctlFlag:   BYTE;
+      ctlHilite: BYTE;
+      ctlValue:  CARDINAL;
+      ctlProc:   ADDRESS;
+      ctlAction: CtlActionProc;
+      ctlData:   LONGINT;
+      ctlRefCon: LONGINT;
+      ctlColor:  ADDRESS;
+
+      CASE :ControlType OF
+        ctlGeneric:
+          ctlReserved:      ARRAY [0..15] OF BYTE;
+          ctlID:            LONGINT;
+          ctlMoreFlags:     CtlMoreFlagsSet;
+          ctlVersion:       CARDINAL;
+      | ctlBtnRadCheck:
+          keyEquiv1:        KeyEquivRec;
+          reserved1:        ARRAY [1..10] OF BYTE;
+          ctlID1:           LONGINT;
+          ctlMoreFlags1:    CtlMoreFlagsSet;
+          ctlVersion1:      CARDINAL;
+      | ctlIcon:
+          keyEquiv2:        KeyEquivRec;
+          reserved2:        ARRAY [1..10] OF BYTE;
+          ctlID2:           LONGINT;
+          ctlMoreFlags2:    CtlMoreFlagsSet;
+          ctlVersion2:      CARDINAL;
+          iconRef:          Ref;
+          displayMode:      CARDINAL;
+      | ctlLnEdPicGrow:
+          reserved3:        ARRAY [0..15] OF BYTE;
+          ctlID3:           LONGINT;
+          ctlMoreFlags3:    CtlMoreFlagsSet;
+          ctlVersion3:      CARDINAL;
+      | ctlList:
+          ctlMemDraw:       MemberDrawProc;
+          ctlMemHeight:     CARDINAL;
+          ctlMemSize:       CARDINAL;
+          ctlListRef:       Ref;
+          ctlListBar:       CtlHandle;
+          ctlID4:           LONGINT;
+          ctlMoreFlags4:    CtlMoreFlags;
+          ctlVersion4:      CARDINAL;
+      | ctlPopUp:
+          menuRef:          Ref;
+          menuEnd:          LONGINT;
+          popUpRect:        Rect;
+          ctlID5:           LONGINT;
+          ctlMoreFlags5:    CtlMoreFlags;
+          ctlVersion5:      CARDINAL;
+          titleWidth:       CARDINAL;
+      | ctlScroll:
+          thumbRect:        Rect;
+          pageRegion:       Rect;
+          ctlID6:           LONGINT;
+          ctlMoreFlags6:    CtlMoreFlags;
+          ctlVersion6:      CARDINAL;
+      | ctlStaticText:
+          ctlJust:          INTEGER;
+          reserved7:        ARRAY [1..14] OF BYTE;
+          ctlID7:           LONGINT;
+          ctlMoreFlags7:    CtlMoreFlags;
+          ctlVersion7:      CARDINAL;
+      | ctlTextEdit:
+          textFlags:        TextEditFlags; (* in TextEdit.DEF *)
+          textLength:       LONGINT;
+          blockList:        TextList;
+          ctrlID8:          CARDINAL;
+          ctrlMoreFlags8:   CtlMoreFlags;
+          ctrlVersion8:     CARDINAL;
+          viewRect:         Rect;
+          totalHeight:      LONGINT;
+          lineSuper:        SuperHandle;
+          styleSuper:       SuperHandle;
+          styleList:        Handle;
+          rulerList:        Handle;
+          lineAtEndFlag:    INTEGER;
+          selectionStart:   LONGINT;
+          selectionEnd:     LONGINT;
+          selectionActive:  CARDINAL;
+          selectionState:   CARDINAL;
+          caretTime:        LONGINT;
+          nullStyleActive:  CARDINAL;
+          nullStyle:        TEStyle;
+          topTextOffset:    LONGINT;
+          topTextVPos:      CARDINAL;
+          vertScrollBar:    CtlHandle;
+          vertScrollPos:    LONGINT;
+          vertScrollMax:    LONGINT;
+          vertScrollAmount: CARDINAL;
+          horzScrollBar:    CtlHandle;
+          horzScrollPos:    LONGINT;
+          horzScrollMax:    LONGINT;
+          horzScrollAmount: CARDINAL;
+          growBoxHandle:    CtlHandle;
+          maximumChars:     LONGINT;
+          maximumLines:     LONGINT;
+          maxCharsPerLine:  CARDINAL;
+          maximumHeight:    CARDINAL;
+          textDrawMode:     CARDINAL;
+          wordBreakHook:    WordBreakHookProc;
+          wordWrapHook:     WordWrapHookProc;
+          keyFilter:        KeyFilterProc;
+          theFilterRect:    Rect;
+          theBufferVPos:    CARDINAL;
+          theBufferHPos:    CARDINAL;
+          theKeyRecord:     KeyRecord;
+          cachedSelcOffset: LONGINT;
+          cachedSelcVPos:   CARDINAL;
+          cachedSelcHPos:   CARDINAL;
+          mouseRect:        Rect;
+          mouseTime:        LONGINT;
+          mouseKind:        CARDINAL;
+          lastClick:        LONGINT;
+          savedHPos:        CARDINAL;
+          anchorPoint:      LONGINT;
+      END;
+    END;
+
+  CtlProc = PROCEDURE(CARDINAL, LONGINT, CtlHandle): LONGINT;
+
+  DefinitionProc =       PROCEDURE(CARDINAL, LONGINT, CtlHandle): LONGINT;
+  DrawProc =             PROCEDURE(CARDINAL, LONGINT, CtlHandle): LONGINT;
+  TestProc =             PROCEDURE(CARDINAL, CARDINAL, CARDINAL, CtlHandle): LONGINT;
+  CalcRectProc =         PROCEDURE(CARDINAL, RectPtr, CtlHandle): LONGINT;
+  InitProc =             PROCEDURE(CARDINAL, CARDINAL, CARDINAL, CtlHandle): LONGINT;
+  InitProc2 =            PROCEDURE(CARDINAL, ADDRESS, CtlHandle): LONGINT;
+  DisposeProc =          PROCEDURE(CARDINAL, LONGINT, CtlHandle): LONGINT;
+  PositionProc =         PROCEDURE(CARDINAL, CARDINAL, CARDINAL, CtlHandle): LONGINT;
+  ThumbProc =            PROCEDURE(CARDINAL, LimitBlockPtr, CtlHandle): LONGINT;
+  DragProc =             PROCEDURE(CARDINAL, LONGINT, CtlHandle): LONGINT;
+  TrackProc =            PROCEDURE(CARDINAL, LONGINT, CtlHandle): LONGINT;
+  NewValueProc =         PROCEDURE(CARDINAL, CARDINAL, CARDINAL, CtlHandle): LONGINT;
+  SetParamProc =         PROCEDURE(CARDINAL, CARDINAL, CARDINAL, CtlHandle): LONGINT;
+  MoveProc =             PROCEDURE(CARDINAL, CARDINAL, CARDINAL, CtlHandle): LONGINT;
+  RecordSizeProc =       PROCEDURE(CARDINAL, ADDRESS, CtlHandle): LONGINT;
+  EventProc =            PROCEDURE(CARDINAL, TaskRecPtr, CtlHandle): LONGINT;
+  TargetProc =           PROCEDURE(CARDINAL, LONGINT, CtlHandle): LONGINT;
+  BoundsProc =           PROCEDURE(CARDINAL, LONGINT, CtlHandle): LONGINT;
+  WindowSizeProc =       PROCEDURE(CARDINAL, LONGINT, CtlHandle): LONGINT;
+  TabProc =              PROCEDURE(CARDINAL, LONGINT, CtlHandle): LONGINT;
+  NotifyMultiPartProc =  PROCEDURE(CARDINAL, LONGINT, CtlHandle): LONGINT;
+  WindowChangeProc =     PROCEDURE(CARDINAL, LONGINT, CtlHandle): LONGINT;
+
+  (* 
+    Control templates 
+  *)
+  CustomControl = 
+    RECORD
+      pCount:      INTEGER;
+      ID:          LONGINT;
+      boundsRect:  Rect;
+      procRef:     LONGINT;
+      flag:        CARDINAL;
+      moreFlags:   CARDINAL;
+      refCon:      LONGINT;
+   (* This block is user-defined:  set your own limit. *)
+      data:        ARRAY [0..255] OF BYTE;
+    END;
+
+  simpleButtonControl = 
+    RECORD
+      pCount:       INTEGER;
+      ID:           LONGINT;
+      rect:         Rect;
+      procRef:      LONGINT;  (* cSimpleButtonControl *)
+      flag:         CARDINAL;
+      moreFlags:    CARDINAL;
+      refCon:       LONGINT;
+      titleRef:     Ref;
+      colorTblRef:  Ref;       (* optional *)
+      keyEquiv:     KeyEquivRec;     (* optional *)
+    END;
+            
+  checkOrRadioControl = 
+    RECORD
+      pCount:       CARDINAL;
+      ID:           LONGINT;
+      rect:         Rect;
+      procRef:      LONGINT;  (* cCheckControl or cRadioControl *)
+      flag:         CARDINAL;
+      moreFlags:    CARDINAL;
+      refCon:       LONGINT;
+      titleRef:     Ref;
+      initialValue: BOOLEAN;
+      colorTblRef:  Ref;       (* optional *)
+      keyEquiv:     KeyEquivRec;     (* optional *)
+    END;
+            
+  iconButtonControl = 
+    RECORD
+      pCount:       CARDINAL;
+      ID:           LONGINT;
+      rect:         Rect;
+      procRef:      LONGINT;  (* aIconButtonControl *)
+      flag:         CARDINAL;
+      moreFlags:    CARDINAL;
+      refCon:       LONGINT;
+      iconRef:      Ref;
+      titleRef:     Ref;         (* optional *)
+      colorTblRef:  Ref;         (* optional *)
+      displayMode:  CARDINAL;           (* optional *)
+      keyEquiv:     KeyEquivRec;       (* optional *)
+    END;
+
+  lineEditControl = 
+    RECORD
+      pCount:       CARDINAL;
+      ID:           LONGINT;
+      rect:         Rect;
+      procRef:      LONGINT;  (* cLineEditControl *)
+      flag:         CARDINAL;
+      moreFlags:    CARDINAL;
+      refCon:       LONGINT;
+      maxSize:      CARDINAL;
+      defaultRef:   Ref;
+      passwordChar: CARDINAL;       (* optional *)
+      keyMask:      CARDINAL;       (* optional *)
+    END;
+            
+  listControl = 
+    RECORD
+      pCount:         CARDINAL;
+      ID:             LONGINT;
+      rect:           Rect;
+      procRef:        LONGINT;  (* cListControl *)
+      flag:           CARDINAL;
+      moreFlags:      CARDINAL;
+      refCon:         LONGINT;
+      listSize:       CARDINAL;
+      listView:       CARDINAL;
+      listType:       CARDINAL;
+      listStart:      CARDINAL;
+      listDraw:       MemberDrawProc;
+      listMemHeight:  CARDINAL;
+      listMemSize:    CARDINAL;
+      listRef:        Ref;
+      colorRef:       Ref;    (* optional *)
+    END;
+            
+  pictureControl = 
+    RECORD
+      pCount:       CARDINAL;
+      ID:           LONGINT;
+      rect:         Rect;
+      procRef:      LONGINT;  (* cPictureControl *)
+      flag:         CARDINAL;
+      moreFlags:    CARDINAL;
+      refCon:       LONGINT;
+      pictureRef:   Ref;
+    END;
+            
+  popUpControl = 
+    RECORD
+      pCount:       CARDINAL;
+      ID:           LONGINT;
+      rect:         Rect;
+      procRef:      LONGINT;  (* cPopUpControl *)
+      flag:         CARDINAL;
+      moreFlags:    CARDINAL;
+      refCon:       LONGINT;
+      titleWidth:   CARDINAL;
+      menuRef:      Ref;
+      initialValue: CARDINAL;
+      colorRef:     Ref;       (* optional *)
+    END;
+
+  scrollControl = 
+    RECORD
+      pCount:       CARDINAL;
+      ID:           LONGINT;
+      rect:         Rect;
+      procRef:      LONGINT;  (* cScrollBarControl *)
+      flag:         CARDINAL;
+      moreFlags:    CARDINAL;
+      refCon:       LONGINT;
+      maxSize:      CARDINAL;
+      viewSize:     CARDINAL;
+      initialValue: CARDINAL;
+      colorTblRef:  Ref       (* optional *)
+    END;
+            
+  sizeBoxControl = 
+    RECORD
+      pCount:       CARDINAL;
+      ID:           LONGINT;
+      rect:         Rect;
+      procRef:      LONGINT;  (* cGrowControl *)
+      flag:         CARDINAL;
+      moreFlags:    CARDINAL;
+      refCon:       LONGINT;
+      colorRef:     Ref;       (* optional *)
+    END;
+
+  statTextControl = 
+    RECORD
+      pCount:       CARDINAL;
+      ID:           LONGINT;
+      rect:         Rect;
+      procRef:      LONGINT;  (* cStatTextControl *)
+      flag:         CARDINAL;
+      moreFlags:    CARDINAL;
+      refCon:       LONGINT;
+      textRef:      Ref;
+      textSize:     CARDINAL;          (* optional *)
+      just:         INTEGER;           (* optional *)
+    END;
+            
+  textEditControl = 
+    RECORD
+      pCount:          CARDINAL;
+      ID:              LONGINT;
+      rect:            Rect;
+      procRef:         LONGINT;       (* cTextEditControl *)
+      flags:           CARDINAL;
+      moreflags:       CARDINAL;
+      refCon:          LONGINT;
+      textFlags:       LONGINT;
+      indentRect:      Rect;         (* this, and the rest of the fields, *)
+      vertBar:         CtlHandle;    (*   are optional                    *)
+      vertAmount:      CARDINAL;
+      horzBar:         CtlHandle;    (* reserved - set to nil *)
+      horzAmount:      CARDINAL;      (* reserved - set to 0   *)
+      styleRef:        Ref;
+      textDescriptor:  CARDINAL;
+      textRef:         Ref;
+      textLength:      LONGINT;
+      maxChars:        LONGINT;
+      maxLines:        LONGINT;
+      maxCharsPerLine: CARDINAL;
+      maxHeight:       CARDINAL;
+      colorRef:        Ref;
+      drawMode:        CARDINAL;
+      filterProcPtr:   KeyFilterProc;
+    END;
+
+  rectangleControl = 
+    RECORD
+      pCount:       CARDINAL;
+      ID:           LONGINT;
+      rect:         Rect;
+      procRef:      LONGINT;  (* cRectangleControl *)
+      flag:         CARDINAL;
+      moreFlags:    CARDINAL;
+      refCon:       LONGINT;
+      penHeight:    CARDINAL;         (* optional *)
+      penWidth:     CARDINAL;         (* optional *)
+      penMask:      Mask;            (* optional *)
+      penPattern:   Pattern;         (* optional *)
+    END;
+
+  thermometerControl = 
+    RECORD
+      pCount:       CARDINAL;
+      ID:           LONGINT;
+      rect:         Rect;
+      procRef:      LONGINT;  (* cThermometerControl *)
+      flag:         CARDINAL;
+      moreFlags:    CARDINAL;
+      refCon:       LONGINT;
+      value:        CARDINAL;
+      data:         CARDINAL;
+      colorTblRef:  Ref;       (* optional *)
+    END;
+
+PROCEDURE CtlBootInit; TOOL 0110H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE CtlStartup(userID, dPageAddr: CARDINAL); TOOL 0210H;
+
+PROCEDURE CtlShutDown; TOOL 0310H;
+
+PROCEDURE CtlVersion(): CARDINAL; TOOL 0410H;
+
+PROCEDURE CtlReset; TOOL 0510H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE CtlStatus(): BOOLEAN; TOOL 0610H;
+
+PROCEDURE CallCtlDefProc(theControl:  CtlHandle; 
+                         message:     CARDINAL;
+                         param:       LONGINT): LONGINT; TOOL 2C10H;
+
+PROCEDURE CMLoadResource(resourceType:  CARDINAL; 
+                         resourceID:    LONGINT): Handle; TOOL 3210H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+                     
+PROCEDURE CMReleaseResource(resourceType: CARDINAL; 
+                            resourceID:   LONGINT); TOOL 3310H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE CtlNewRes; TOOL 1210H;
+
+PROCEDURE DisposeControl (theControl: CtlHandle); TOOL 0A10H;
+
+PROCEDURE DragControl(startX:       CARDINAL;
+                      startY:       CARDINAL;
+                      limitRectPtr: RectPtr;
+                      slopRectPtr:  RectPtr; 
+                      axis:         CARDINAL;
+                      theControl:   CtlHandle); TOOL 1710H;
+
+PROCEDURE DragRect(actionProc:  ADDRESS;
+                   dragPattern: PatternPtr;
+                   startX:      CARDINAL;
+                   startY:      CARDINAL;
+                   dragRect:    RectPtr;
+                   limitRect:   RectPtr;
+                   slopRect:    RectPtr;
+                   dragFlag:    DragFlag): LONGINT; TOOL 1D10H;
+(*
+  Note that DragRect returns 2 WORD sized values:
+
+    High word = amount X changed.
+    Low word  = amount Y changed.
+*)
+
+PROCEDURE DrawControls(theWindow: GrafPortPtr); TOOL 1010H;
+
+PROCEDURE DrawOneCtl(theControl: CtlHandle); TOOL 2510H;
+
+PROCEDURE EraseControl(theControl: CtlHandle); TOOL 2410H;
+
+PROCEDURE FindControl(VAR foundCtlPtr:  CtlHandle; 
+                          pointX:       CARDINAL; 
+                          pointY:       CARDINAL;
+                          theWindow:    GrafPortPtr): CARDINAL; TOOL 1310H;
+
+PROCEDURE FindRadioButton(windPtr:  GrafPortPtr;
+                          famNum:   CARDINAL): CARDINAL; TOOL 3910H;
+
+PROCEDURE FindTargetCtl(): CtlHandle; TOOL 2610H;
+
+PROCEDURE GetCtlAction(theControl: CtlHandle): CtlActionProc; TOOL 2110H;
+
+PROCEDURE GetCtlHandleFromID(theWindow: GrafPortPtr; 
+                             ctlID:     LONGINT): CtlHandle; TOOL 3010H;
+                     
+PROCEDURE GetCtlID(theControl: CtlHandle): LONGINT; TOOL 2A10H;
+
+PROCEDURE GetCtlDPage(): CARDINAL; TOOL 1F10H;
+
+PROCEDURE GetCtlMoreFlags(theControl: CtlHandle): CARDINAL; TOOL 2E10H;
+                     
+PROCEDURE GetCtlParamPtr(): ADDRESS; TOOL 3510H;
+
+PROCEDURE GetCtlParams (theControl: CtlHandle): LONGINT; TOOL 1C10H;
+(* 
+  Note that GetCtlParams returns 2 CARDINALs: they represent param1 and param2
+  in the control record.
+*)
+
+PROCEDURE GetCtlRefCon(theControl: CtlHandle): LONGINT; TOOL 2310H;
+
+PROCEDURE GetCtlTitle(theControl: CtlHandle): String255Ptr; TOOL 0D10H;
+
+PROCEDURE GetCtlValue(theControl: CtlHandle): CARDINAL; TOOL 1A10H;
+
+PROCEDURE GetCtlValueByID(windPtr:  GrafPortPtr;
+                          ctlID:    LONGINT): CARDINAL; TOOL 3D10H;
+
+PROCEDURE GetLETextByID(windPtr:  GrafPortPtr;
+                        LECtlID:  LONGINT;
+                        textPtr:  String255Ptr); TOOL 3B10H;
+
+PROCEDURE GrowSize(): LONGINT; TOOL 1E10H;
+(* 
+  Note that GrowSize returns 2 CARDINALs: 
+
+    Low word = height.
+    High word = width.
+*)
+
+PROCEDURE HideControl(theControl: CtlHandle); TOOL 0E10H;
+
+PROCEDURE HiliteControl(hiliteState: CARDINAL; theControl: CtlHandle); TOOL 1110H;
+
+PROCEDURE HiliteControlByID(hiliteState: CARDINAL;
+                            windPtr:      GrafPortPtr;
+                            ctlID:        LONGINT); TOOL 3F10H;
+
+PROCEDURE InvalCtls(theWindow: GrafPortPtr); TOOL 3710H;
+
+PROCEDURE InvalOneCtlByID(windPtr:  GrafPortPtr;
+                          ctlID:    LONGINT); TOOL 3E10H;
+
+PROCEDURE KillControls (theWindow: GrafPortPtr); TOOL 0B10H;
+
+PROCEDURE MakeNextCtlTarget(): CtlHandle; TOOL 2710H;
+
+PROCEDURE MakeThisCtlTarget(theControl: CtlHandle); TOOL 2810H;
+
+PROCEDURE MoveControl(newX, newY: CARDINAL; theControl: CtlHandle); TOOL 1610H;
+
+PROCEDURE NewControl(theWindow:     GrafPortPtr; 
+                     rect:          RectPtr;
+                     title:         String255Ptr;
+                     flag:          CARDINAL;
+                     value:         CARDINAL;
+                     param1:        CARDINAL;
+                     param2:        CARDINAL;
+                     defProc:       LONGINT; 
+                     refCon:        LONGINT;
+                     ctlColorTable: ColorTablePtr): CtlHandle; TOOL 0910H;
+
+PROCEDURE NewControl2(theWindow:      GrafPortPtr; 
+                      referenceDesc:  CARDINAL;
+                      reference:      Ref): CtlHandle; TOOL 3110H;
+
+PROCEDURE NotifyCtls(mask:      CARDINAL;
+                     message:   CARDINAL; 
+                     param:     LONGINT;
+                     theWindow: GrafPortPtr); TOOL 2D10H;
+                     
+PROCEDURE SendEventToCtl(targetOnlyFlag:  BOOLEAN; 
+                         theWindow:       GrafPortPtr;
+                         eTaskRecPtr:     EventRecordPtr): BOOLEAN; TOOL 2910H;
+                             
+PROCEDURE SetCtlAction(newAction: CtlActionProc; theControl: CtlHandle); TOOL 2010H;
+
+PROCEDURE SetCtlIcons(newFontHandle: FontHandle): FontHandle; TOOL 1810H;
+
+PROCEDURE SetCtlID(newID: LONGINT; theControl: CtlHandle); TOOL 2B10H;
+
+PROCEDURE SetCtlMoreFlags(newMoreFlags: CARDINAL; theControl: CtlHandle); TOOL 2F10H;
+                     
+PROCEDURE SetCtlParamPtr(subArrayptr: ADDRESS); TOOL 3410H;
+
+PROCEDURE SetCtlParams(param2, param1: CARDINAL; theControl: CtlHandle); TOOL 1B10H;
+
+PROCEDURE SetCtlRefCon(newRefCon: LONGINT; theControl: CtlHandle); TOOL 2210H;
+
+PROCEDURE SetCtlTitle(titlePtr: String255Ptr; theControl: CtlHandle); TOOL 0C10H;
+
+PROCEDURE SetCtlValue(curValue: CARDINAL; theControl: CtlHandle); TOOL 1910H;
+
+PROCEDURE SetCtlValueByID(curValue: CARDINAL;
+                          windPtr:  GrafPortPtr;
+                          ctlID:    LONGINT); TOOL 3C10H;
+
+PROCEDURE SetLETextByID(windPtr:  GrafPortPtr;
+                        LECtlID:  LONGINT;
+                        textPtr:  String255Ptr); TOOL 3A10H;
+
+PROCEDURE ShowControl(theControl: CtlHandle); TOOL 0F10H;
+
+PROCEDURE TestControl(pointX:     CARDINAL;
+                      pointY:     CARDINAL; 
+                      theControl: CtlHandle): CARDINAL; TOOL 1410H;
+
+PROCEDURE TrackControl(startX:      CARDINAL;
+                       startY:      CARDINAL; 
+                       actionProc:  CtlActionProc;
+                       theControl:  CtlHandle): CARDINAL; TOOL 1510H;
+
+END ControlManager.

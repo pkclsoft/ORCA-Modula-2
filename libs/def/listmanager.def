@@ -1,0 +1,157 @@
+(*$NoImp*)
+DEFINITION MODULE ListManager;
+(*
+  List Manager Interface File
+*)
+
+FROM Common IMPORT
+  Ref, String255Ptr;
+FROM EventManager IMPORT
+  EventRecordPtr;
+FROM MemoryManager IMPORT
+  Handle;
+FROM QuickDrawII IMPORT
+  Rect, RectPtr, GrafPortPtr;
+FROM SYSTEM IMPORT
+  ADDRESS, BYTE;
+
+CONST
+  (* 
+    Bit mask for listType 
+  *)
+  cStringFlag     =   0001H;      (* null-terminated string type *)
+  selectOnlyOne   =   0002H;      (* only 1 selection allowed    *)
+
+  (* 
+    memFlag 
+  *)
+  memDisabled     =   40H;        (* sets member flag to disabled *)
+  memSelected     =   80H;        (* sets member flag to selected *)
+
+TYPE
+  MemberDrawProc = PROCEDURE(VAR Rect, ADDRESS, Handle);
+
+  MemBit = (mfUnused0, mfUnused1, mfUnused2, mfUnused3, mfUnused4,
+            mfInactive, mfDisabled, mfSelected);
+  MemFlag = SET OF MemBit;
+
+  MemberRec  =
+    RECORD
+      memPtr:   ADDRESS; (* pointer to string *)
+      memFlag:  MemFlag;
+      (* memData would normally be replaced by your own specific member data *)
+      memData:  ARRAY [1..10] OF BYTE;
+    END;
+  MemberRecPtr = POINTER TO MemberRec;
+
+  MemberList = ARRAY [1..100] OF MemberRec;   (* user may modify size *)
+  MemberListPtr = POINTER TO MemberList;
+
+  (*
+    This is the new comparison procedure definition for 6.0.1 onwards.
+    Make sure you set 31 of the address for this to work.
+  
+  CompareProc = PROCEDURE(MemberRecPtr, MemberRecPtr): BOOLEAN;
+  *)
+  CompareProc = PROCEDURE(MemberRecPtr, MemberRecPtr);
+
+  BarColors =
+    RECORD
+      barOutline:   CARDINAL;
+      barNorArrow:  CARDINAL;
+      barSelArrow:  CARDINAL;
+      barArrowBack: CARDINAL;
+      barNorThumb:  CARDINAL;
+      barSelThumb:  CARDINAL;
+      barPageRgn:   CARDINAL;
+      barIactive:   CARDINAL;
+    END;
+  BarColorsPtr = POINTER TO BarColors;
+
+  ListRec = 
+    RECORD
+      listRect:        Rect;
+      listSize:        CARDINAL; (* 0..16383 (3FFFH) *)
+      listView:        CARDINAL;
+      listType:        CARDINAL;
+      listStart:       CARDINAL;
+      listCtl:         Handle;  (* can't use aCtlHandle - circular reference *)
+      listDraw:        MemberDrawProc;
+      listMemHeight:   CARDINAL;
+      listMemSize:     CARDINAL;
+      listPointer:     MemberListPtr;
+      listRefCon:      LONGINT;
+      listScrollClr:   BarColorsPtr;
+    END;
+  ListRecPtr = POINTER TO ListRec;
+
+PROCEDURE ListBootInit; TOOL 011CH;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE ListStartUp; TOOL 021CH;
+
+PROCEDURE ListShutDown; TOOL 031CH;
+
+PROCEDURE ListVersion(): CARDINAL; TOOL 041CH;
+
+PROCEDURE ListReset; TOOL 051CH;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE ListStatus(): BOOLEAN; TOOL 061CH;
+
+PROCEDURE CompareStrings(flags:   CARDINAL;
+                         string1: String255Ptr;
+                         string2: String255Ptr): INTEGER; TOOL 181CH;
+
+PROCEDURE CreateList(    theWindow: GrafPortPtr;
+                     VAR theList:   ListRec): Handle; TOOL 091CH;
+
+PROCEDURE DrawMember(    theMember: MemberRecPtr;
+                     VAR theList:   ListRec); TOOL 0C1CH;
+
+PROCEDURE DrawMember2(itemnum:    CARDINAL;
+                      theListCtl: Handle); TOOL 111CH;
+               
+PROCEDURE GetListDefProc(): ADDRESS; TOOL 0E1CH;
+
+PROCEDURE ListKey(flags:        CARDINAL;
+                  theEventRec:  EventRecordPtr;
+                  listCtlHndl:  Handle); TOOL 171CH;
+
+PROCEDURE NewList(    theMember:  MemberRecPtr;
+                  VAR theList:    ListRec); TOOL 101CH;
+
+PROCEDURE NewList2(drawRtn:     MemberDrawProc;
+                   listStart:   CARDINAL;
+                   listRef:     Ref;
+                   listRefDesc: CARDINAL;
+                   listSize:    CARDINAL;
+                   (* can't use aCtlHandle - circular reference *)
+                   theListCtl:  Handle); TOOL 161CH;
+         
+PROCEDURE NextMember(    firstMember: MemberRecPtr;
+                     VAR theList:     ListRec): MemberRecPtr; TOOL 0B1CH;
+ 
+PROCEDURE NextMember2(itemNum:    CARDINAL;
+                      theListCtl: Handle): CARDINAL; TOOL 121CH;
+
+PROCEDURE ResetMember(VAR theList: ListRec): MemberRecPtr; TOOL 0F1CH;
+
+PROCEDURE ResetMember2(theListCtl: Handle): CARDINAL; TOOL 131CH;
+
+PROCEDURE SelectMember(    theMember: MemberRecPtr;
+                       VAR theList:   ListRec); TOOL 0D1CH;
+
+PROCEDURE SelectMember2(itemNum: CARDINAL; theListCtl: Handle); TOOL 141CH;
+
+PROCEDURE SortList(    compareRtn:  CompareProc;
+                   VAR theList:     ListRec); TOOL 0A1CH;
+
+PROCEDURE SortList2(compareRtn: CompareProc; 
+                    theListCtl: Handle); TOOL 151CH;
+
+END ListManager.

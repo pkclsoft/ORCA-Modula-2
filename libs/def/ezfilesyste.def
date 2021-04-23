@@ -1,0 +1,91 @@
+DEFINITION MODULE EZFileSystem;
+(*
+  This module provides a number of convience type procedures that simplify 
+  utility type access to files.  It also supplies more extensive support for 
+  GS/OS while trying to maintain the access mechanism defined by this module.
+
+  WARNING:
+    Use of any procedures within this module will prevent your code from 
+    being portable.
+*)
+
+FROM FileSystem IMPORT
+  File;
+FROM SYSTEM IMPORT 
+  ADDRESS;
+
+PROCEDURE FileExists(file: ARRAY OF CHAR): BOOLEAN;
+(*
+  OPERATION:
+    Returns TRUE if the specified file exists.
+*)
+
+PROCEDURE FilePosition(VAR f: File): LONGINT;
+(*
+  OPERATION:
+    This function procedure provides a simpler mechanism to obtaining the 
+    current position with a file.  Instead of returning two cardinals, a
+    single longint is returned which is easier to manipulate.
+*)
+
+PROCEDURE GetFileType(    file: ARRAY OF CHAR;
+                      VAR type: CARDINAL;
+                      VAR aux:  LONGINT;
+                      VAR OK:   BOOLEAN);
+(*
+  OPERATION:
+    Obtain and return the filetype and auxtype of the specified file.
+
+    If the file does not exist, then OK is returned as FALSE.
+*)
+
+PROCEDURE MakeFileName(    filename:  ARRAY OF CHAR;
+                       VAR FName:     ARRAY OF CHAR;
+                           ext:       ARRAY OF CHAR);
+(*
+  OPERATION:
+    This procedure generates a filename of the form:
+
+      filename.ext
+
+    It ensures that the path is kept, and that the first part of the filename
+    (not the extension) is no more than 8 characters in length.
+
+  NOTE:
+    It assumes that FName is big enough to hold the resulting filename.
+*)
+
+PROCEDURE ReadNBytes(VAR f:       File; 
+                         n:       LONGINT;
+                         buffer:  ADDRESS; 
+                     VAR read:    LONGINT);
+(*
+  OPERATION:
+    Read "n" bytes from the file "f" into the buffer with address "buffer".
+
+    The result "read" reports the actual number of bytes read.
+*)
+
+PROCEDURE SetFileType(    file: ARRAY OF CHAR;
+                          type: CARDINAL;
+                          aux:  LONGINT;
+                      VAR OK:   BOOLEAN);
+(*
+  OPERATION:
+    Set the filetype and auxtype of the specified file.
+
+    If the file does not exist, then OK is returned as FALSE.
+*)
+
+PROCEDURE WriteNBytes(VAR f:       File; 
+                          n:       LONGINT;
+                          buffer:  ADDRESS; 
+                      VAR written: LONGINT);
+(*
+  OPERATION:
+    Write "n" bytes to the file "f" from the buffer with address "buffer".
+
+    The result "written" reports the actual number of bytes written.
+*)
+
+END EZFileSystem.

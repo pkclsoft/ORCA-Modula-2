@@ -1,0 +1,116 @@
+(*$NoImp*)
+DEFINITION MODULE SoundManager;
+(*
+  Sound Manager Interface File
+*)
+
+FROM SYSTEM IMPORT
+  ADDRESS, BYTE;
+
+CONST
+  (*
+    Channel-generator-type word
+  *)
+  ffSynthMode     =   0001H;      (* free-form synthesizer mode *)
+  noteSynthMode   =   0002H;      (* note synthesizer mode      *)
+
+  (*
+    Generator status word
+  *)
+  genAvail        =   0000H;
+  ffSynth         =   0100H;
+  noteSynth       =   0200H;
+  lastBlock       =   8000H;
+
+TYPE
+  GeneratorMaskBit = (gen0Off, gen1Off, gen2Off, gen3Off, gen4Off, gen5Off,
+                      gen6Off, gen7Off, gen8Off, gen9Off, gen10Off, gen11Off,
+                      gen12Off, gen13Off, gen14Off, genReserved);
+  GeneratorMask = SET OF GeneratorMaskBit;
+
+  SoundParamBlockPtr = POINTER TO SoundParamBlock;
+  SoundParamBlock =
+    RECORD
+      waveStart:     ADDRESS;              (* starting address of wave    *)
+      waveSize:      CARDINAL;             (* waveform size in pages      *)
+      freqOffset:    CARDINAL;             (* waveform playback frequency *)
+      DOCBuffer:     CARDINAL;             (* DOC buffer starting address *)
+      DOCBufferSize: CARDINAL;             (* DOC buffer size code        *)
+      nextWAddr:     SoundParamBlockPtr;   (* ptr to next waveform block  *)
+      volSetting:    CARDINAL;             (* DOC volume setting          *)
+    END;
+
+  DOCRegParamBlk =
+    RECORD
+      oscGenType:  CARDINAL;
+      freqLow1:    BYTE;                  (* 1st oscillator's parameters *)
+      freqHigh1:   BYTE;
+      vol1:        BYTE;
+      tablePtr1:   BYTE;
+      control1:    BYTE;
+      tableSize1:  BYTE;
+      freqLow2:    BYTE;                  (* 2nd oscillator's parameters *)
+      freqHigh2:   BYTE;
+      vol2:        BYTE;
+      tablePtr2:   BYTE;
+      control2:    BYTE;
+      tableSize2:  BYTE;
+    END;
+
+PROCEDURE SoundBootInit; TOOL 0108H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE SoundStartUp(dPageAddr: CARDINAL); TOOL 0208H;
+
+PROCEDURE SoundShutDown; TOOL 0308H;
+
+PROCEDURE SoundVersion(): CARDINAL; TOOL 0408H;
+
+PROCEDURE SoundReset; TOOL 0508H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE SoundToolStatus(): BOOLEAN; TOOL 0608H;
+
+PROCEDURE FFSetUpSound(    channelGen:    CARDINAL;
+                       VAR paramBlockPtr: SoundParamBlock); TOOL 1508H;
+
+PROCEDURE FFGeneratorStatus(genNumber: CARDINAL): CARDINAL; TOOL 1108H;
+
+PROCEDURE FFSoundDoneStatus(genNumber: CARDINAL): BOOLEAN; TOOL 1408H;
+
+PROCEDURE FFSoundStatus(): CARDINAL; TOOL 1008H;
+
+PROCEDURE FFStartPlaying(genWord: CARDINAL); TOOL 1608H;
+
+PROCEDURE FFStartSound(    genNumFFSynth: CARDINAL;
+                       VAR PBlockPtr:     SoundParamBlock); TOOL 0E08H;
+
+PROCEDURE FFStopSound(genMask: GeneratorMask); TOOL 0F08H;
+
+PROCEDURE GetSoundVolume(genNumber: CARDINAL): CARDINAL; TOOL 0C08H;
+
+PROCEDURE GetTableAddress(): ADDRESS; TOOL 0B08H;
+
+PROCEDURE ReadDOCReg(VAR dRegParmBlkPtr: DOCRegParamBlk); TOOL 1808H;
+
+PROCEDURE ReadRamBlock(destPtr:   ADDRESS; 
+                       DOCStart:  CARDINAL;
+                       byteCount: CARDINAL); TOOL 0A08H;
+
+PROCEDURE SetDOCReg(VAR dRegParmBlkPtr: DOCRegParamBlk); TOOL 1708H;
+
+PROCEDURE SetSoundMIRQV(sMasterIRQ: LONGINT); TOOL 1208H;
+
+PROCEDURE SetSoundVolume(volume, genNumber: CARDINAL); TOOL 0D08H;
+
+PROCEDURE SetUserSoundIRQV(userIRQVector: LONGINT): LONGINT; TOOL 1308H;
+
+PROCEDURE WriteRamBlock(srcPtr:     ADDRESS; 
+                        DOCStart:   CARDINAL;
+                        byteCount:  CARDINAL); TOOL 0908H;
+
+END SoundManager.

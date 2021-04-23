@@ -1,0 +1,182 @@
+(*$NoImp*)
+DEFINITION MODULE Loader;
+
+FROM MemoryManager IMPORT
+  Handle;
+FROM SYSTEM IMPORT
+  ADDRESS;
+
+TYPE
+  MemSegTableEntry =
+    RECORD
+      UserID:   CARDINAL;
+      handle:   Handle;
+      loadFile: CARDINAL;
+      loadSeg:  CARDINAL;
+      segKind:  CARDINAL;
+    END;
+
+PROCEDURE GetLoadSegInfo(userID:  CARDINAL;
+                         fileNum: CARDINAL;
+                         segNum:  CARDINAL;
+                         buffAdr: ADDRESS); TOOL 0F11H;
+
+PROCEDURE GetUserID(pathnameAddr:  ADDRESS): CARDINAL; TOOL 1011H;
+
+PROCEDURE GetUserID2(pathnameAddr: ADDRESS): CARDINAL; TOOL 2111H;
+
+PROCEDURE InitialLoad(userID:       CARDINAL;
+                      pathnameAddr: ADDRESS;
+                      flagWord:     BITSET); TOOL 0911H;
+(*
+  WARNING:
+    This call returns more than one result parameter.  DO NOT CALL IT WITHOUT
+    ADDING SOME INLINE CODE, EG.
+
+      INLINE(PHA)   ;buffSize
+      INLINE(PHA)   ;dPageAddr
+      INLINE(PHA)   ;startAddr
+      INLINE(PHA)
+      INLINE(PHA)   ;userID
+      InitialLoad(...);
+      INLINE(PLA)   ;userID
+      GETREG(Acc, userID);
+      INLINE(PLA)
+      GETREG(Acc, startAddr.low);
+      INLINE(PLA)
+      GETREG(Acc, startAddr.high);
+      INLINE(PLA)
+      GETREG(Acc, dPagrAddr);
+      INLINE(PLA)
+      GETREG(Acc, buffSize);
+*)
+
+PROCEDURE InitialLoad2(userID:    CARDINAL;
+                       buffAddr:  ADDRESS;
+                       flagWord:  BITSET;
+                       inputType: CARDINAL); TOOL 2011H;
+(*
+  WARNING:
+    This call returns more than one result parameter.  DO NOT CALL IT WITHOUT
+    ADDING SOME INLINE CODE, EG.
+
+      INLINE(PHA)   ;buffSize
+      INLINE(PHA)   ;dPageAddr
+      INLINE(PHA)   ;startAddr
+      INLINE(PHA)
+      INLINE(PHA)   ;userID
+      InitialLoad2(...);
+      INLINE(PLA)   ;userID
+      GETREG(Acc, userID);
+      INLINE(PLA)
+      GETREG(Acc, startAddr.low);
+      INLINE(PLA)
+      GETREG(Acc, startAddr.high);
+      INLINE(PLA)
+      GETREG(Acc, dPagrAddr);
+      INLINE(PLA)
+      GETREG(Acc, buffSize);
+*)
+
+PROCEDURE LGetPathname(userID:  CARDINAL;
+                       fileNum: CARDINAL): ADDRESS; TOOL 1111H;
+
+PROCEDURE LGetPathName2(userID:   CARDINAL;
+                        fileNum:  CARDINAL): ADDRESS; TOOL 2211H;
+
+PROCEDURE LoaderInitialization(); TOOL 0111H;
+
+PROCEDURE LoaderReset(); TOOL 0511H;
+
+PROCEDURE LoaderShutDown(); TOOL 0311H;
+
+PROCEDURE LoaderStartup(); TOOL 0211H;
+
+PROCEDURE LoaderStatus(): BOOLEAN; TOOL 0611H;
+
+PROCEDURE LoaderVersion(): CARDINAL; TOOL 0411H;
+
+PROCEDURE LoadSegName(userID:       CARDINAL;
+                      filenameAddr: ADDRESS;
+                      segNameAddr:  ADDRESS); TOOL 0D11H;
+(*
+  WARNING:
+    This call returns more than one result parameter.  DO NOT CALL IT WITHOUT
+    ADDING SOME INLINE CODE, EG.
+
+      INLINE(PHA)   ;segNum
+      INLINE(PHA)   ;fileNum
+      INLINE(PHA)   ;userID
+      INLINE(PHA)   ;segAddr (longword)
+      INLINE(PHA)
+      LoadSegName(...);
+      INLINE(PLA)
+      GETREG(Acc, segAddr.low);
+      INLINE(PLA)
+      GETREG(Acc, segAddr.high);
+      INLINE(PLA)
+      GETREG(Acc, userID);
+      INLINE(PLA)
+      GETREG(Acc, fileNum);
+      INLINE(PLA)
+      GETREG(Acc, segNum);
+*)
+
+PROCEDURE LoadSegNum(userID:  CARDINAL;
+                     fileNum: CARDINAL;
+                     segNum:  CARDINAL): ADDRESS; TOOL 0B11H;
+
+PROCEDURE RenamePathname(oldAddress:  ADDRESS;
+                         newAddress:  ADDRESS); TOOL 1311H;
+
+PROCEDURE Restart(userID: CARDINAL); TOOL 0A11H;
+(*
+  WARNING:
+    This call returns more than one result parameter.  DO NOT CALL IT WITHOUT
+    ADDING SOME INLINE CODE, EG.
+
+      INLINE(PHA)   ;buffSize
+      INLINE(PHA)   ;dPageAddr/buffAddr
+      INLINE(PHA)   ;startAddr
+      INLINE(PHA)
+      INLINE(PHA)   ;userID
+      InitialLoad2(...);
+      INLINE(PLA)   ;userID
+      GETREG(Acc, userID);
+      INLINE(PLA)
+      GETREG(Acc, startAddr.low);
+      INLINE(PLA)
+      GETREG(Acc, startAddr.high);
+      INLINE(PLA)
+      GETREG(Acc, dPagrAddr);
+      INLINE(PLA)
+      GETREG(Acc, buffSize);
+*)
+
+PROCEDURE UnloadSeg(address: ADDRESS); TOOL 0E11H;
+(*
+  WARNING:
+    This call returns more than one result parameter.  DO NOT CALL IT WITHOUT
+    ADDING SOME INLINE CODE, EG.
+
+      INLINE(PHA)   ;segNum
+      INLINE(PHA)   ;fileNum
+      INLINE(PHA)   ;userID
+      InitialLoad2(...);
+      INLINE(PLA)   ;userID
+      GETREG(Acc, userID);
+      INLINE(PLA)
+      GETREG(Acc, fileNum);
+      INLINE(PLA)
+      GETREG(Acc, segNum);
+*)
+
+PROCEDURE UnloadSegNum(userID:  CARDINAL;
+                       fileNum: CARDINAL;
+                       segNum:  CARDINAL); TOOL 0C11H;
+
+PROCEDURE UserShutDown(userID:  CARDINAL;
+                       flag:    BITSET): CARDINAL; TOOL 1211H;
+
+
+END Loader.

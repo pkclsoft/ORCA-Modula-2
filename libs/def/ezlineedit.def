@@ -1,0 +1,30 @@
+DEFINITION MODULE EZLineEdit;
+
+PROCEDURE setLineEditText(EditText : ARRAY OF CHAR;
+                          SelectIt : BOOLEAN;
+                          inID     : LONGINT);
+(*
+  setlineEditText  This procedure will insert the specified text into an
+  ~~~~~~~~~~~~~~~  extended lineEdit control.
+
+  EditText     - A pascal string of up to 255 characters that is to be
+                 inserted into the control.
+  SelectIt     - A boolean flag, indicating whether the routine is to select
+                 the text after inserting it.
+  inID         - An extended control ID, used to specify the control into
+                 which the text is to be inserted.
+*)
+
+PROCEDURE getLineEditText(    inID         : LONGINT;
+                          VAR TextValue    : ARRAY OF CHAR);
+(*
+  getlineEditText  This procedure obtains the current value of an extended
+  ~~~~~~~~~~~~~~~  lineEdit control.
+
+  inID         - An extended control ID, used to specify the control from
+                 which the text is to be obtained.
+  TextValue    - A pascal string into which the lineEdit value is to be
+                 placed.
+*)
+
+END EZLineEdit.

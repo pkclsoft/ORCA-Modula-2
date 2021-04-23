@@ -1,0 +1,394 @@
+(*$NoImp *)
+DEFINITION MODULE MenuManager;
+(*
+  Menu Manager Interface File
+*)
+
+FROM Common IMPORT
+  Ref, String255Ptr;
+FROM ControlManager IMPORT
+  CtlHandle, CtlActionProc;
+FROM EventManager IMPORT
+  EventRecord;
+FROM GSOSInterface IMPORT
+  GSOSInStringPtr;
+FROM MemoryManager IMPORT
+  Handle;
+FROM QuickDrawII IMPORT
+  Rect, RectPtr, GrafPortPtr;
+FROM SYSTEM IMPORT
+  ADDRESS, BYTE, WORD;
+
+CONST
+  (*
+    Messages to menu definition procedures
+  *)
+  mDrawMsg        =   0000H;      (* draw menu             *)
+  mChooseMsg      =   0001H;      (* hit test item         *)
+  mSizeMsg        =   0002H;      (* compute menu size     *)
+  mDrawTitle      =   0003H;      (* draw menu's title     *)
+  mDrawMItem      =   0004H;      (* draw item             *)
+  mGetMItemID     =   0005H;      (* return item ID number *)
+
+  (*
+    Inputs to SetMenuFlag routine
+  *)
+  enableMenu      =   0FF7FH;     (* menu will not be dimmed; is selectable *)
+  disableMenu     =   00080H;     (* menu will be dimmed and not selectable *)
+  colorReplace    =   0FFDFH;     (* menu title and background will be      *)
+                                  (*   redrawn and hilighted                *)
+  xorTitleHilite  =   00020H;     (* menu title area XORed to highlight     *)
+  standardMenu    =   0FFEFH;     (* menu is a standard menu                *)
+  customMenu      =   00010H;     (* menu is a custom menu                  *)
+
+  (*
+    Inputs to SetMItemFlag routine
+  *)
+  underMItem      =   00040H;     (* underline item                        *)
+  noUnderMItem    =   0FFBFH;     (* don't underline item                  *)
+  xorMItemHilite  =   00020H;     (* menu title area XORed to highlight    *)
+  colorMItemHilite =  0FFDFH;     (* menu title and background highlighted *)
+  enableItem      =   0FF7FH;     (* enable menu item                      *)
+  disableItem     =   00080H;     (* disable menu item                     *)
+
+  (*
+    Reference values for new 5.0 Menu Manager calls
+  *)
+  refIsPointer    =   0;
+  refIsHandle     =   1;
+  refIsResource   =   2;
+
+TYPE
+  (*
+    Masks for MenuFlag
+  *)
+  MenuFlagBit = (mUnused0, mUnused1, mInvis, mCached, mCustom, mXor,
+                 mSelected, mDisabled);
+  MenuFlag = SET OF MenuFlagBit;
+
+  MenuRecordPtr = POINTER TO MenuRecord;
+  MenuHandle = POINTER TO MenuRecordPtr;
+
+  MenuDefProc = PROCEDURE(CARDINAL, CARDINAL, MenuHandle, RectPtr, 
+                          CARDINAL, CARDINAL, CARDINAL): WORD;
+
+  MenuRecord =
+    RECORD
+      menuID:     CARDINAL;
+      menuWidth:  CARDINAL;
+      menuHeight: CARDINAL;
+      menuProc:   MenuDefProc;
+      menuFlag:   MenuFlag;
+      menuRes:    BYTE;
+      numOfItems: CARDINAL;
+      titleWidth: CARDINAL;
+      titleName:  String255Ptr;
+      menuCache:  Handle;
+    END;
+
+  MenuItemBit = (miBold, miItalic, miUnderline, miReserved3, miReserved4,
+                 miXOR, miDivider, miDisabled, miStructHandle, 
+                 miStructResource, miAdditionalStructure, miOutline, 
+                 miShadow, miReserved13, miTitleHandle, miTitleResource);
+  MenuItemFlag = SET OF MenuItemBit;
+
+  menuItemTemplate =
+    RECORD
+      version:       CARDINAL;     (* must be zero *)
+      itemID:        CARDINAL;
+      itemChar:      BYTE;
+      itemAltChar:   BYTE;
+      itemCheck:     CARDINAL;
+      itemFlag:      MenuItemFlag;
+      itemTitleRef:  Ref;
+    END;
+
+  MenuItemBit2 = (mi2IconHandle, mi2IconResource, mi2Reserved2, mi2Reserved3, 
+                  mi2Reserved4, mi2Reserved5, mi2Reserved6, mi2Reserved7,
+                  mi2Reserved8, mi2Reserved9, mi2Reserved10, mi2Reserved11,
+                  mi2Reserved12, mi2Reserved13, mi2Reserved14, mi2IconPresent);
+  MenuItemFlag2 = SET OF MenuItemBit2;
+
+  altMenuItemTemplate =
+    RECORD
+      version:        CARDINAL;     (* must be zero *)
+      itemID:         CARDINAL;
+      itemChar:       BYTE;
+      itemAltChar:    BYTE;
+      itemCheck:      CARDINAL;
+      itemFlag:       MenuItemFlag;
+      itemStructRef:  Ref;
+    END;
+
+  itemStruct =
+    RECORD
+      itemFlag2:      MenuItemFlag2;
+      itemTitleRef:   Ref;
+      itemIconRef:    Ref;
+    END;
+
+  MenuFlagBit2 = (mfReserved0, mfReserved1, mfReserved2, mfAllowCache,
+                  mfCustom, mfXOR, mfReserved6, mfDisabled, 
+                  mfAlwaysCallmChoose, mfReserved9, mfReserved10,
+                  mfReserved11, mfItemHandle, mfItemResource,
+                  mfTitleHandle, mfTitleResource);
+  MenuFlag2 = SET OF MenuFlagBit2;
+
+  menuTemplate =
+    RECORD
+      version:       CARDINAL;     (* must be zero *)
+      menuID:        CARDINAL;
+      menuFlag:      MenuFlag2;
+      menuTitleRef:  Ref;
+   (* Array of pointers/handles/resource IDs of menu items.  Set array size  *)
+   (* for application.                                                       *)
+      itemRefs:      ARRAY [1..10] OF Ref;
+      terminator:    LONGINT;     (* must be zero *)
+    END;
+
+  MenuBarFlagBit = (mbReserved0, mbReserved1, mbReserved2, mbReserved3,
+                    mbReserved4, mbReserved5, mbReserved6, mbReserved7,
+                    mbReserved8, mbReserved9, mbReserved10, mbReserved11,
+                    mbReserved12, mbReserved13, mbMenuHandle, mbMenuResource);
+  MenuBarFlag = SET OF MenuBarFlagBit;
+         
+  menuBarTemplate =
+    RECORD
+      version:       CARDINAL;     (* must be zero *)
+      menuBarFlag:   MenuBarFlag;
+   (* Array of pointers/handles/resource IDs for menus.  Set array size for  *)
+   (* application.                                                           *)
+      menuRefs:      ARRAY [1..10] OF Ref;
+      terminator:    LONGINT;     (* must be zero *)
+    END;
+
+  MenuBarRecord =
+    RECORD
+      ctlNext:    CtlHandle;
+      ctlOwner:   GrafPortPtr;
+      ctlRect:    Rect;
+      ctlFlag:    BYTE;
+      ctlHilite:  BYTE;
+      ctlValue:   CARDINAL;
+      ctlProc:    ADDRESS;
+      ctlAction:  CtlActionProc;
+      ctlData:    LONGINT;
+      ctlRefCon:  LONGINT;
+      ctlColor:   ADDRESS;
+      menuList:   ADDRESS;
+    END;
+  MenuBarRecordPtr = POINTER TO MenuBarRecord;
+  MenuBarHandle = POINTER TO MenuBarRecordPtr;
+
+  MenuRedrawProc = PROCEDURE(RectPtr, CARDINAL);
+
+  TextStyleBit = (tsBold, tsItalic, tsUnderline, tsOutline, tsShadow,
+                  tsReserved5, tsReserved6, tsReserved7, tsReserved8,
+                  tsReserved9, tsReserved10, tsReserved11, tsReserved12,
+                  tsReserved13, tsReserved14, tsReserved15);
+  TextStyle = SET OF TextStyleBit;
+
+  ResultBuffer =
+    RECORD
+      highestID:  CARDINAL;
+      first:      Handle;
+      second:     Handle;
+    END;
+
+  PathMFlagBit = (pmfInsertAtTop, pmfReserved1, pmfUseOpenFolder,
+                  pmfDevNumValid, pmfPathAlreadyExpanded,
+                  pmfReserved5, pmfReserved6, pmfReserved7,
+                  pmfReserved8, pmfReserved9, pmfReserved10,
+                  pmfReserved11, pmfReserved12, pmfReserved13,
+                  pmfReserved14, pmfReserved15);
+  PathMFlag = SET OF PathMFlagBit;
+
+PROCEDURE MenuBootInit; TOOL 010FH;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE MenuStartUp(userID, dPageAddr: CARDINAL); TOOL 020FH;
+
+PROCEDURE MenuShutDown; TOOL 030FH;
+
+PROCEDURE MenuVersion(): CARDINAL; TOOL 040FH;
+
+PROCEDURE MenuReset; TOOL 050FH;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE MenuStatus(): BOOLEAN; TOOL 060FH;
+
+PROCEDURE CalcMenuSize(newWidth, newHeight, menuNum: CARDINAL); TOOL 1C0FH;
+
+PROCEDURE CheckMItem(checkedFlag: BOOLEAN; itemNum: CARDINAL); TOOL 320FH;
+
+PROCEDURE CountMItems(menuNum: CARDINAL): CARDINAL; TOOL 140FH;
+
+PROCEDURE DeleteMenu(menuNum: CARDINAL); TOOL 0E0FH;
+
+PROCEDURE DeleteMItem(itemNum: CARDINAL); TOOL 100FH;
+
+PROCEDURE DisableMItem(itemNum: CARDINAL); TOOL 310FH;
+
+PROCEDURE DisposeMenu(theMenuHandle: MenuHandle); TOOL 2E0FH;
+
+PROCEDURE DrawMenuBar; TOOL 2A0FH;
+
+PROCEDURE EnableMItem(itemNum: CARDINAL); TOOL 300FH;
+
+PROCEDURE FixMenuBar(): CARDINAL; TOOL 130FH;
+
+PROCEDURE FlashMenuBar; TOOL 0C0FH;
+
+PROCEDURE GetBarColors(): LONGINT; TOOL 180FH;
+
+PROCEDURE GetMenuBar(): MenuBarHandle; TOOL 0A0FH;
+
+PROCEDURE GetMenuFlag(menuNum: CARDINAL): CARDINAL; TOOL 200FH;
+
+PROCEDURE GetMenuMgrPort(): GrafPortPtr; TOOL 1B0FH;
+
+PROCEDURE GetMenuTitle(menuNum: CARDINAL): String255Ptr; TOOL 220FH;
+
+PROCEDURE GetMHandle(menuNum: CARDINAL): MenuHandle; TOOL 160FH;
+
+PROCEDURE GetMItem(itemNum: CARDINAL): String255Ptr; TOOL 250FH;
+
+PROCEDURE GetMItemBlink(): CARDINAL; TOOL 4F0FH;
+
+PROCEDURE GetMItemFlag(itemNum: CARDINAL): MenuItemFlag; TOOL 270FH;
+
+PROCEDURE GetMItemFlag2(itemNum: CARDINAL): MenuItemFlag2; TOOL 4C0FH;
+
+PROCEDURE GetMItemIcon(itemID: CARDINAL): Ref; TOOL 480FH;
+
+PROCEDURE GetMItemMark(itemNum: CARDINAL): CARDINAL; TOOL 340FH;
+
+PROCEDURE GetMItemStruct(itemID: CARDINAL): Ref;
+
+PROCEDURE GetMItemStyle(itemNum: CARDINAL): CARDINAL; TOOL 360FH;
+
+PROCEDURE GetMTitleStart(): CARDINAL; TOOL 1A0FH;
+
+PROCEDURE GetMTitleWidth(menuNum: CARDINAL): CARDINAL; TOOL 1E0FH;
+
+PROCEDURE GetPopUpDefProc(): ADDRESS; TOOL 3B0FH;
+
+PROCEDURE GetSysBar(): MenuBarHandle; TOOL 110FH;
+
+PROCEDURE HideMenuBar; TOOL 450FH;
+
+PROCEDURE HiliteMenu(hiliteFlag: BOOLEAN; menuNum: CARDINAL); TOOL 2C0FH;
+
+PROCEDURE InitPalette; TOOL 2F0FH;
+
+PROCEDURE InsertMenu(addMenu: MenuHandle; insertAfter: CARDINAL); TOOL 0D0FH;
+
+PROCEDURE InsertMItem(addItem:      String255Ptr; 
+                      insertAfter:  CARDINAL;
+                      menuNum:      CARDINAL); TOOL 0F0FH;
+
+PROCEDURE InsertMItem2(refDescriptor: CARDINAL; 
+                       menuItemTRef:  Ref;
+                       insertAfter:   CARDINAL;
+                       menuNum:       CARDINAL); TOOL 3F0FH;
+
+PROCEDURE InsertPathMItems(    flags:       PathMFlag;
+                               pathPtr:     GSOSInStringPtr;
+                               deviceNum:   CARDINAL;
+                               menuID:      CARDINAL;
+                               afterID:     CARDINAL;
+                               startingID:  CARDINAL;
+                           VAR resultPtr:   ResultBuffer); TOOL 500FH;
+
+PROCEDURE MenuGlobal(menuGlobalMask: CARDINAL): CARDINAL; TOOL 230FH;
+
+PROCEDURE MenuKey(VAR theTask:    EventRecord; 
+                      theMenuBar: MenuBarHandle); TOOL 090FH;
+
+PROCEDURE MenuNewRes; TOOL 290FH;
+
+PROCEDURE MenuRefresh(redrawPtr: MenuRedrawProc); TOOL 0B0FH;
+
+PROCEDURE MenuSelect(VAR theTask:     EventRecord; 
+                         theMenuBar: MenuBarHandle); TOOL 2B0FH;
+
+PROCEDURE NewMenu(newMenuString: ADDRESS): MenuHandle; TOOL 2D0FH;
+
+PROCEDURE NewMenu2(refDescriptor: CARDINAL;
+                   menuTRef:      Ref): MenuHandle; TOOL 3E0FH;
+                  
+PROCEDURE NewMenuBar(theWindow: GrafPortPtr): MenuBarHandle; TOOL 150FH;
+
+PROCEDURE NewMenuBar2(refDescriptor:  CARDINAL; 
+                      menuBarTRef:    Ref;
+                      theWindow:      GrafPortPtr): MenuBarHandle; TOOL 430FH;
+                     
+PROCEDURE PopUpMenuSelect(selection:    CARDINAL;
+                          currentLeft:  CARDINAL;
+                          currentTop:   CARDINAL;
+                          flag:         BITSET;
+                          theMenu:      MenuHandle): CARDINAL; TOOL 3C0FH;
+                  
+PROCEDURE RemoveMItemStruct(itemID: CARDINAL); TOOL 4B0FH;
+
+PROCEDURE SetBarColors(newBarColor:     CARDINAL;
+                       newInvertColor:  CARDINAL;
+                       newOutColor:     CARDINAL); TOOL 170FH;
+
+PROCEDURE SetMenuBar(theBarHandle: MenuBarHandle); TOOL 390FH;
+
+PROCEDURE SetMenuFlag(newvalue, menuNum: CARDINAL); TOOL 1F0FH;
+
+PROCEDURE SetMenuID(newMenuNum, curMenuNum: CARDINAL); TOOL 370FH;
+
+PROCEDURE SetMenuTitle(newTitle: String255Ptr; menuNum: CARDINAL); TOOL 210FH;
+
+PROCEDURE SetMenuTitle2(refDescriptor:  CARDINAL; 
+                        titleRef:       Ref;
+                        menuNum:        CARDINAL); TOOL 400FH;
+               
+PROCEDURE SetMItem(newItem: String255Ptr; itemNum: CARDINAL); TOOL 240FH;
+
+PROCEDURE SetMItem2(refDescriptor:  CARDINAL;
+                    menuItemTRef:   Ref;
+                    menuItem:       CARDINAL); TOOL 410FH;
+
+PROCEDURE SetMItemBlink(count: CARDINAL); TOOL 280FH;
+
+PROCEDURE SetMItemFlag(newValue, itemNum: CARDINAL); TOOL 260FH;
+
+PROCEDURE SetMItemFlag2(newValue, itemNum: CARDINAL); TOOL 4D0FH;
+
+PROCEDURE SetMItemIcon(iconDesc:  CARDINAL;
+                       iconRef:   Ref;
+                       itemID:    CARDINAL); TOOL 470FH;
+
+PROCEDURE SetMItemID(newItemNum, curItemNum: CARDINAL); TOOL 380FH;
+
+PROCEDURE SetMItemMark(mark, itemNum: CARDINAL); TOOL 330FH;
+
+PROCEDURE SetMItemName(newName: String255Ptr; itemNum: CARDINAL); TOOL 3A0FH;
+
+PROCEDURE SetMItemName2(refDescriptor:  CARDINAL; 
+                        titleRef:       Ref;
+                        menuItem:       CARDINAL); TOOL 420FH;
+            
+PROCEDURE SetMItemStruct(itemStructDesc:  CARDINAL;
+                         itemStructRef:   Ref;
+                         itemID:          CARDINAL); TOOL 490FH;
+
+PROCEDURE SetMItemStyle(textStyle: TextStyle; itemNum: CARDINAL); TOOL 350FH;
+
+PROCEDURE SetMTitleStart(xStart: CARDINAL); TOOL 190FH;
+
+PROCEDURE SetMTitleWidth(newWidth, menuNum: CARDINAL); TOOL 1D0FH;
+
+PROCEDURE SetSysBar(theBarHandle: MenuBarHandle); TOOL 120FH;
+
+PROCEDURE ShowMenuBar; TOOL 460FH;
+
+END MenuManager.

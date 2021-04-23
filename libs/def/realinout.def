@@ -1,0 +1,69 @@
+DEFINITION MODULE RealInOut;
+(*
+   Terminal input/output of REAL values
+
+		The implementation of this module uses the procedures
+		'ReadString' and 'WriteString' of module 'InOut' for
+		reading and writing of REAL values. Therefore,
+		redirection of i/o through 'InOut' applies, too.
+		
+		From the book 'Programming in Modula-2' by Prof.
+		N. Wirth.
+*)
+
+VAR Done: BOOLEAN;
+
+PROCEDURE ReadLongReal(VAR x: LONGREAL);
+(*
+  OPERATION:
+    Read a REAL from the terminal.
+
+    x       the number read.
+
+		The range of representable valid real numbers is:
+		   1.0E-307 <= ABS(r) < 1.0E308
+		
+		The syntax accepted for input is:
+		
+		   realnumber       = fixedpointnumber [exponent].
+		   fixedpointnumber = [sign] {digit} [ '.' {digit} ].
+		   exponent         =  ('e' | 'E') [sign] digit {digit}.
+		   sign             = '+' | '-'.
+		   digit            = '0'|'1'|'2'|'3'|'4'|'5'|'6'|'7'|
+		                      '8'|'9'.
+		
+		The following numbers are legal representations of one
+		hundred: 100, 10E1, 100E0, 1000E-1, E2, +E2, 1E2, +1E2,
+		+1E+2, 1E+2 .
+		
+		At most 15 digits are significant, leading zeros not
+		counting. Input terminates a control character or space.
+		DEL or BS is used for backspacing
+		
+		The variable 'Done' indicates whether a valid number was
+		read.
+*)
+
+PROCEDURE WriteLongReal(x: LONGREAL; n: CARDINAL);
+(*
+  OPERATION:
+    Write a REAL to the terminal, right-justified.
+
+     x       number to write,
+     n       minimum field width.
+
+		If fewer than n characters are needed to represent x,
+		leading blanks are output. At least 10 characters are
+		needed to write any REAL number.
+*)
+
+PROCEDURE WriteLongRealOct(x: LONGREAL);
+(*
+  OPERATION:
+    Write a REAL to terminal, as four words in octal form
+
+     x       number to write,
+*)
+
+END RealInOut.
+ 

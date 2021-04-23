@@ -1,0 +1,54 @@
+(*$NoImp*)
+DEFINITION MODULE ACE;
+(*
+  ACE Tool Set Interface File (Apple IIGS Audio Compression and Expansion)
+*)
+
+FROM MemoryManager IMPORT
+  Handle;
+FROM SYSTEM IMPORT
+  ADDRESS;
+
+PROCEDURE ACEBootInit; TOOL 011DH;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE ACEStartup(zeroPageLoc: CARDINAL); TOOL 021DH;
+
+PROCEDURE ACEShutdown; TOOL 031DH;
+
+PROCEDURE ACEVersion(): CARDINAL; TOOL 041DH;
+
+PROCEDURE ACEReset; TOOL 051DH;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE ACEStatus(): BOOLEAN; TOOL 061DH;
+
+PROCEDURE ACEInfo(infoItemCode: CARDINAL): LONGINT; TOOL 071DH;
+
+PROCEDURE ACECompBegin; TOOL 0B1DH;
+
+PROCEDURE ACECompress(src:        Handle; 
+                      srcOffset:  LONGINT;
+                      dest:       Handle;
+                      destOffset: LONGINT; 
+                      nBlks:      CARDINAL;
+                      method:     CARDINAL); TOOL 091DH;
+
+PROCEDURE ACEExpand(src:        Handle; 
+                    srcOffset:  LONGINT; 
+                    dest:       Handle;
+                    destOffset: LONGINT; 
+                    nBlks:      CARDINAL;
+                    method:     CARDINAL); TOOL 0A1DH;
+
+PROCEDURE ACEExpBegin; TOOL 0C1DH;
+
+PROCEDURE GetACEExpState(theBuffer: ADDRESS); TOOL 0D1DH;
+
+PROCEDURE SetACEExpState(theBuffer: ADDRESS); TOOL 0E1DH;
+
+END ACE.

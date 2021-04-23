@@ -1,0 +1,243 @@
+DEFINITION MODULE InOut;
+
+FROM FileSystem IMPORT
+  File;
+FROM SYSTEM IMPORT
+  WORD;
+
+CONST
+  EOL = 15C;
+
+  maxcard   = 0FFFFH;
+  maxint    = 07FFFH;
+  minint    = 08000H;
+
+VAR
+  Done:    BOOLEAN;
+  termCh:  CHAR;    (* terminating character in ReadInt, ReadCard *)
+  in, out: File;    (* for exceptional cases only *)
+
+PROCEDURE OpenErrorOutput;
+(*
+  OPERATION:
+    Tells the InOut module to send all future output to Error Output, until
+    such time as the application closes Error output with a call to 
+    CloseErrorOutput.
+*)
+
+PROCEDURE OpenInput(defext: ARRAY OF CHAR);
+(*
+  OPERATION:
+    Request a file name and open input file "in".
+
+  NOTES:
+    o Done := "file was successfully opened".
+    o If open, subsequent input is read from this file.
+    o If name ends with ".", append extension defext
+*)
+
+PROCEDURE OpenOutput(defext: ARRAY OF CHAR);
+(*
+  OPERATION:
+    Request a file name and open output file "out".
+
+  NOTES:
+    o Done := "file was successfully opened.
+    o If open, subsequent output is written on this file.
+    o If name ends with ".", append extension defext.
+*)
+
+PROCEDURE CloseErrorOutput;
+(*
+  OPERATION:
+    Closes error output direction.  returns output to standard output.
+*)
+
+PROCEDURE CloseInput;
+(*
+  OPERATION:
+    Closes input file; returns input to terminal.
+*)
+
+PROCEDURE CloseOutput;
+(*
+  OPERATION:
+    Closes output file; returns output to terminal.
+*)
+
+PROCEDURE Read(VAR ch: CHAR);
+(*
+  OPERATION:
+    Reads a character from either the Terminal, or the Open Input File (if any).
+
+  NOTE:
+    Done := NOT in.eof
+*)
+
+PROCEDURE ReadString(VAR s: ARRAY OF CHAR);
+(*
+  OPERATION:
+    Read string, i.e. sequence of characters not containing blanks nor control
+    characters; leading blanks are ignored. Input is terminated by any
+    character <= " "; this character is assigned to termCH.
+*)
+
+PROCEDURE ReadInt(VAR x: INTEGER);
+(*
+  OPERATION:
+    Read string and convert to integer.
+
+    Syntax:
+      integer = ["+"|"-"] digit {digit}.
+
+  NOTES:
+    o Leading blanks are ignored.
+    o Done := "integer was read"
+*)
+
+PROCEDURE ReadCard(VAR x: CARDINAL);
+(*
+  OPERATION:
+    Read string and convert to cardinal.
+
+    Syntax:
+      cardinal = digit {digit}.
+
+  NOTES:
+    o Leading blanks are ignored.
+    o Done := "cardinal was read"
+*)
+
+PROCEDURE ReadWrd(VAR w: WORD);
+(*
+  OPERATION:
+    Read a WORD from "in".
+
+  NOTE:
+    Done := NOT in.eof
+*)
+
+PROCEDURE Write(ch: CHAR);
+(*
+  OPERATION:
+    Write a character to the Terminal or the current output file (if any).
+*)
+
+PROCEDURE WriteLn;
+(*
+  OPERATION:
+    Terminate line.
+*)
+
+PROCEDURE WriteString(s: ARRAY OF CHAR);
+(*
+  OPERATION:
+    Write a string to the Terminal, or the current output file (if any).
+*)
+
+PROCEDURE WriteInt(x: INTEGER; n: CARDINAL);
+(*
+  OPERATION:
+    Write integer x with (at least) n characters. If n is greater than the
+    number of digits needed, blanks are added preceding the number.
+*)
+
+PROCEDURE WriteCard(x,n: CARDINAL);
+(*
+  OPERATION:
+    Write cardinal x with (at least) n characters. If n is greater than the
+    number of digits needed, blanks are added preceding the number.
+*)
+
+PROCEDURE WriteOct(x,n: CARDINAL);
+(*
+  OPERATION:
+    Write cardinal x with (at least) n characters as an octal number. If n is
+    greater than the number of digits needed, blanks are added preceding the
+    number.
+*)
+
+PROCEDURE WriteHex(x,n: CARDINAL);
+(*
+  OPERATION:
+    Write cardinal in hexadecimal representation with four hex digits. If n>4,
+    blanks are appended preceding the number
+*)
+
+PROCEDURE WriteWrd(w: WORD);
+(*
+  OPERATION:
+    Writes a WORD to the current output file (if any).
+
+  NOTE:
+    Done := "word was written to file 'in' and file 'in' has been opened"
+*)
+
+PROCEDURE ReadLongInt(VAR x : LONGINT);
+(*
+  OPERATION:
+    Read string and convert to long integer.
+
+    Syntax:
+      integer = ["+"|"-"] digit {digit} ["D"].
+
+    NOTES:
+      o Leading blanks are ignored.
+      o Done := "long integer was read"
+*)
+
+PROCEDURE WriteLongInt(x : LONGINT; n : CARDINAL);
+(*
+  OPERATION:
+    Write long integer x with (at least) n characters on file "out". If n is
+    greater than the number of digits needed, blanks are added preceding the
+    number.
+*)
+
+PROCEDURE ReadReal(VAR x: REAL);
+(*
+  OPERATION:
+    Read a real number from keyboard according to EBNF-syntax:
+      ["-"|"+"]<digit>{<digit>}["."<digit>{<digit>}]
+      ["E"["-"|"+"]<digit>{<digit>}]
+*)
+
+PROCEDURE WriteReal(x: REAL; n: CARDINAL);
+(*
+  OPERATION:
+    Write a real number with n characters.
+*)
+
+PROCEDURE WriteFixPt(x: REAL; n, k: CARDINAL);
+(*
+  OPERATION:
+    Write x using n characters with k digits after the decimal point. If fewer
+    than n characters are needed, leading blanks are inserted.
+
+    If k is zero, then the numer is written in exponential format.
+*)
+
+PROCEDURE WriteLongFixPt(x: LONGREAL; n, k: CARDINAL);
+(*
+  OPERATION:
+    Write x using n characters with k digits after the decimal point. If fewer
+    than n characters are needed, leading blanks are inserted.
+
+    If k is zero, then the numer is written in exponential format.
+*)
+
+PROCEDURE ReadLongReal(VAR x: LONGREAL);
+(*
+  OPERATION:
+    Read a real number from keyboard according to EBNF-syntax:
+      ["-"|"+"]<digit>{<digit>}["."<digit>{<digit>}]
+      ["E"["-"|"+"]<digit>{<digit>}]
+*)
+
+PROCEDURE WriteLongReal(x: LONGREAL; n: CARDINAL);
+(*
+  OPERATION:
+    Write a real number with n characters.
+*)
+	
+END InOut.

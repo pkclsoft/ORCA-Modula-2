@@ -1,0 +1,201 @@
+(*$NoImp*)
+DEFINITION MODULE IntegerMath;
+
+FROM SYSTEM IMPORT
+  BYTE;
+
+CONST
+   (* Limits *)
+   minLongint  =   80000000H;      (* min negative signed longint             *)
+   minFrac     =   80000000H;      (* pinned value for neg Frac overflow      *)
+   minFixed    =   80000000H;      (* pinned value for neg Fixed overflow     *)
+   minInt      =   8000H;          (* min negative signed integer             *)
+   maxUInt     =   0FFFFH;         (* max positive unsigned integer           *)
+   maxLongint  =   7FFFFFFFH;      (* max positive signed longint             *)
+   maxFrac     =   7FFFFFFFH;      (* pinned value for positive Frac overflow *)
+   maxFixed    =   7FFFFFFFH;      (* pinned value, positive Fixed overflow   *)
+   maxULong    =   0FFFFFFFFH;     (* max unsigned longint                    *)
+
+   (* Signed Flag *)
+   unsignedFlag =  0000H;          (* value is not signed *)
+   signedFlag  =   0001H;          (* value is signed     *)
+
+TYPE
+  IntegerMathString = ARRAY [0..31] OF CHAR;
+  IntegerMathStringPtr = POINTER TO IntegerMathString;
+
+  ExtendedValue = ARRAY [0..9] OF BYTE;
+  ExtendedValuePtr = POINTER TO ExtendedValue;
+
+PROCEDURE IMBootInit; TOOL 010BH;  (* WARNING: NEVER make this call *)
+
+PROCEDURE IMStartUp; TOOL 020BH;
+
+PROCEDURE IMShutDown; TOOL 030BH;
+
+PROCEDURE IMVersion(): INTEGER; TOOL 040BH;
+
+PROCEDURE IMReset; TOOL 050BH;    (* WARNING: NEVER make this call *)
+
+PROCEDURE IMStatus(): BOOLEAN; TOOL 060BH;
+
+PROCEDURE Dec2Int(strPtr:     IntegerMathString;
+                  strLength:  INTEGER;
+                  signedFlag: INTEGER): INTEGER; TOOL 280BH;
+
+PROCEDURE Dec2Long(strPtr:      IntegerMathString;
+                   strLength:   INTEGER;
+                   signedFlag:  INTEGER): LONGINT; TOOL 290BH;
+
+PROCEDURE Fix2Frac(fixedValue: LONGINT): LONGINT; TOOL 1C0BH;
+
+PROCEDURE Fix2Long(fixedValue: LONGINT): LONGINT; TOOL 1B0BH;
+
+PROCEDURE Fix2X(    fixedValue:  LONGINT;
+                VAR extendedVal: ExtendedValue); TOOL 1E0BH;
+
+PROCEDURE FixATan2(input1, input2: LONGINT): LONGINT; TOOL 170BH;
+
+PROCEDURE FixDiv(dividend, divisor: LONGINT): LONGINT; TOOL 110BH;
+
+PROCEDURE FixMul(multiplicand, multiplier: LONGINT): LONGINT; TOOL 0F0BH;
+
+PROCEDURE FixRatio(numerator, denominator: INTEGER): LONGINT; TOOL 0E0BH;
+(*
+  IMPORTANT:
+    FixRatio does not check for a "divide by zero" condition.  The calling
+    application must do this before calling FixRatio.
+*)
+
+PROCEDURE FixRound(fixedValue: LONGINT): INTEGER; TOOL 130BH;
+
+PROCEDURE Frac2Fix(fracValue: LONGINT): LONGINT; TOOL 1D0BH;
+
+PROCEDURE Frac2X(    fracValue:   LONGINT;
+                 VAR extendedVal: ExtendedValue); TOOL 1F0BH;
+
+PROCEDURE FracCos(angle: LONGINT): LONGINT; TOOL 150BH;
+
+PROCEDURE FracDiv(dividend, divisor: LONGINT): LONGINT; TOOL 120BH;
+
+PROCEDURE FracMul(multiplicand, multiplier: LONGINT): LONGINT; TOOL 100BH;
+
+PROCEDURE FracSin(angle: LONGINT): LONGINT; TOOL 160BH;
+
+PROCEDURE FracSqrt(fracValue: LONGINT): LONGINT; TOOL 140BH;
+
+PROCEDURE Hex2Int(inputStr:   IntegerMathString;
+                  strLength:  INTEGER): INTEGER; TOOL 240BH;
+
+PROCEDURE Hex2Long(inputStr:  IntegerMathString;
+                   strLength: INTEGER): LONGINT; TOOL 250BH;
+
+PROCEDURE HexIt(value: INTEGER): LONGINT; TOOL 2A0BH;
+(*
+  IMPORTANT:
+    Note that the result is declared as a LONGINT, but in actual fact it is
+    an ARRAY [0..3] OF CHAR.  This array contains four hex digits
+    representing the integer value passed to the tool call.
+*)
+
+PROCEDURE HiWord(longValue: LONGINT): CARDINAL; TOOL 180BH;
+
+PROCEDURE Int2Dec(value:      INTEGER;
+                  strPtr:     IntegerMathString;
+                  strLength:  INTEGER;
+                  signedFlag: BOOLEAN); TOOL 260BH;
+
+PROCEDURE Int2Hex(value:      INTEGER;
+                  strPtr:     IntegerMathString;
+                  strLength:  INTEGER); TOOL 220BH;
+
+PROCEDURE Long2Dec(value:       LONGINT;
+                   strPtr:      IntegerMathString;
+                   strLength:   INTEGER;
+                   signedFlag:  BOOLEAN); TOOL 270BH;
+
+PROCEDURE Long2Fix(longValue: LONGINT): LONGINT; TOOL 1A0BH;
+
+PROCEDURE Long2Hex(value:     LONGINT;
+                   strPtr:    IntegerMathString;
+                   strLength: INTEGER); TOOL 230BH;
+
+PROCEDURE LongDivide(dividend, divisor: LONGINT); TOOL 0D0BH;
+(*
+  IMPORTANT:
+    You should not call this tool unless you:
+
+    1) Precede the call with:
+      INLINE(PHA, PHA, PHA, PHA);
+
+      This places space on the stack for the result.
+
+    2) then follow the call with the following inline code:
+
+      INLINE(PLA, PLX);
+      GETREG(Acc, remLo);
+      GETREG(XReg, remHi);
+
+      Where remHi and remLo are the high and low words forming the longint
+      value of the remainder.
+
+      INLINE(PLA, PLX);
+      GETREG(Acc, quoLo);
+      GETREG(XReg, quoHi);
+
+      Where quoHi and quoLo are the high and low words forming the longint
+      value of the quotient.
+*)
+
+PROCEDURE LongMul(multiplicand, multiplier: LONGINT); TOOL 0C0BH;
+(*
+  IMPORTANT:
+    You should not call this tool unless you:
+
+    1) Precede the call with:
+      INLINE(PHA, PHA, PHA, PHA);
+
+      This places space on the stack for the result.
+
+    2) then follow the call with the following inline code:
+
+      INLINE(PLA, PLX);
+      GETREG(Acc, msLo);
+      GETREG(XReg, msHi);
+
+      Where msHi and msLo are the high and low words forming the most
+      significant 32 bits of the result.
+
+      INLINE(PLA, PLX);
+      GETREG(Acc, lsLo);
+      GETREG(XReg, lsHi);
+
+      Where lsHi and lsLo are the high and low words forming the least
+      significant 32 bits of the result.
+*)
+
+PROCEDURE LoWord(longValue: LONGINT): CARDINAL; TOOL 190BH;
+
+PROCEDURE Multiply(multiplicand, multiplier: INTEGER): LONGINT; TOOL 090BH;
+
+PROCEDURE SDivide(dividend, divisor: INTEGER): LONGINT; TOOL 0A0BH;
+(*
+  IMPORTANT:
+    SDivide returns 2 words:
+      lo word = quotient
+      hi word = remainder
+*)
+
+PROCEDURE UDivide(dividend, divisor: CARDINAL): LONGINT; TOOL 0B0BH;
+(*
+  IMPORTANT:
+    UDivide returns 2 words:
+      lo word = quotient
+      hi word = remainder
+*)
+
+PROCEDURE X2Fix(VAR extendedVal: ExtendedValue): LONGINT; TOOL 200BH;
+
+PROCEDURE X2Frac(VAR extendedVal: ExtendedValue): LONGINT; TOOL 210BH;
+
+END IntegerMath.

@@ -1,0 +1,96 @@
+DEFINITION MODULE RealConversions;
+(*
+   Conversion Module for floating numbers
+*)
+
+PROCEDURE LongRealToString (    r:              LONGREAL;
+                                digits, width:  INTEGER;
+                            VAR str:            ARRAY OF CHAR;
+                            VAR okay:           BOOLEAN);
+(*
+  OPERATION:
+    Convert the LONGREAL number r into a string with max characters "width", and
+    "digits" digits after the decimal point.  If "width" is zero, then the 
+    number is converted to exponential format.
+*)
+
+PROCEDURE RealToString(   r:              REAL; 
+                          digits, width:  INTEGER;
+                      VAR str:            ARRAY OF CHAR; 
+                      VAR okay:           BOOLEAN);
+(*
+  OPERATION:
+    Convert the REAL number r into a string with max characters "width", and
+    "digits" digits after the decimal point.  If width is zero, then the 
+    number is converted to exponential format.
+*)
+
+PROCEDURE StringToLongReal(    str:  ARRAY OF CHAR;
+                           VAR r:    LONGREAL;
+                           VAR okay: BOOLEAN);
+
+(*
+  OPERATION:
+    Convert ARRAY OF CHAR to LONGREAL representation.
+
+    str    string to be represented,
+    r      LONGREAL result,
+    okay   TRUE if the conversion is done properly,
+           FALSE otherwise.
+
+		Leading blanks are skipped, control code characters and
+		space are considered as legal terminators. The syntax for
+		a legal real representation in 'str' is:
+		
+		   realnumber       = fixedpointnumber [exponent].
+		   fixedpointnumber = [sign] {digit} [ '.' {digit} ].
+		   exponent         =  ('e' | 'E') [sign] digit {digit}.
+		   sign             = '+' | '-'.
+		   digit            = '0'|'1'|'2'|'3'|'4'|'5'|'6'|'7'|
+		                      '8'|'9'.
+		
+		The following numbers are legal representations of one
+		hundred: 100, 10E1, 100E0, 1000E-1, E2, +E2, 1E2, +1E2,
+		+1E+2, 1E+2 .
+		
+		At most 15 digits are significant, leading zeros not
+		counting. The range of representable real numbers is:
+		     1.79E-307 <= ABS(r) < 1.79E308
+*)
+
+
+PROCEDURE StringToReal(    str:  ARRAY OF CHAR;
+                       VAR r:    REAL;
+                       VAR okay: BOOLEAN);
+
+(*
+  OPERATION:
+    Convert ARRAY OF CHAR to REAL representation.
+
+    str    string to be represented,
+    r      REAL result,
+    okay   TRUE if the conversion is done properly,
+           FALSE otherwise.
+
+		Leading blanks are skipped, control code characters and
+		space are considered as legal terminators. The syntax for
+		a legal real representation in 'str' is:
+		
+		   realnumber       = fixedpointnumber [exponent].
+		   fixedpointnumber = [sign] {digit} [ '.' {digit} ].
+		   exponent         =  ('e' | 'E') [sign] digit {digit}.
+		   sign             = '+' | '-'.
+		   digit            = '0'|'1'|'2'|'3'|'4'|'5'|'6'|'7'|
+		                      '8'|'9'.
+		
+		The following numbers are legal representations of one
+		hundred: 100, 10E1, 100E0, 1000E-1, E2, +E2, 1E2, +1E2,
+		+1E+2, 1E+2 .
+		
+		At most 15 digits are significant, leading zeros not
+		counting. The range of representable real numbers is:
+		     3.38E-38 <= ABS(r) < 3.38E+38
+*)
+
+END RealConversions.
+ 

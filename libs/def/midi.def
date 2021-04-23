@@ -1,0 +1,52 @@
+(*$NoImp*)
+DEFINITION MODULE MIDI;
+(*
+  MIDI Tool Set Interface File
+*)
+
+FROM Common IMPORT
+  String255;
+FROM SYSTEM IMPORT
+  ADDRESS;
+
+TYPE
+  driverInfo =
+    RECORD
+      slotNumber: CARDINAL;
+      slotFlag:   CARDINAL;
+      driverPath: String255;
+    END;
+  driverPtr = POINTER TO driverInfo;
+
+PROCEDURE MidiBootInit; TOOL 0120H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE MidiStartup(theUserID, directPageAddr: CARDINAL); TOOL 0220H;
+
+PROCEDURE MidiShutdown; TOOL 0320H;
+
+PROCEDURE MidiVersion(): CARDINAL; TOOL 0420H;
+
+PROCEDURE MidiReset; TOOL 0520H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE MidiStatus(): BOOLEAN; TOOL 0620H;
+
+PROCEDURE MidiClock(funcNum: CARDINAL; arg: LONGINT); TOOL 0B20H;
+
+PROCEDURE MidiControl(funcNum: CARDINAL; arg: ADDRESS); TOOL 0920H;
+
+PROCEDURE MidiDevice(funcNum: CARDINAL; dInfo: driverPtr); TOOL 0A20H;
+
+PROCEDURE MidiInfo(funcNum: CARDINAL): LONGINT; TOOL 0C20H;
+
+PROCEDURE MidiReadPacket(bufPtr:  ADDRESS;
+                         bufSize: CARDINAL): CARDINAL; TOOL 0D20H;
+
+PROCEDURE MidiWritePacket(bufPtr: ADDRESS): CARDINAL; TOOL 0E20H;
+
+END MIDI.

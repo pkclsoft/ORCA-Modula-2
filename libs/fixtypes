@@ -1,0 +1,6 @@
+filetype def/=.def src 16
+filetype mod/=.mod src 16
+filetype asm/=.asm src 3
+filetype =.macros src 3
+filetype build src 6
+filetype build2 src 6

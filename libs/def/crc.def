@@ -1,0 +1,37 @@
+DEFINITION MODULE Crc;
+(*
+  Author  : John Cameron
+*)
+
+FROM SYSTEM IMPORT WORD;
+
+IMPORT FileSystem, FastFileSystem;
+
+PROCEDURE CRC(VAR dx: WORD; data: WORD); 
+(*
+  OPERATION:
+    Takes byte in 'data' and updates CRC in 'dx'.
+                        16   12   5
+    CRC is CRC-CCITT = X  + X  + X + 1
+  SOURCE:
+    Dr. Dobb's Journal, Feb 1986, p80.
+  AUTHOR:
+    T.F. Ritter
+*) 
+
+PROCEDURE FileCRC(f: FileSystem.File): CARDINAL;
+(*
+  OPERATION
+    Returns CRC of the given file
+*)
+
+PROCEDURE FastFileCRC(f: FastFileSystem.File): CARDINAL;
+(*
+  OPERATION
+    Returns CRC of the given file using Fastfile under the ORCA shell.  Note
+    that you shouldn't use this procedure if your application is not going to
+    run under ORCA.
+*)
+
+END Crc.
+ 

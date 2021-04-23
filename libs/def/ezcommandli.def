@@ -1,0 +1,79 @@
+DEFINITION MODULE EZCommandLine;
+
+PROCEDURE deleteSwitch(VAR line:    ARRAY OF CHAR;
+                           switch:  ARRAY OF CHAR);
+(*
+  OPERATION:
+    Deletes the specified switch from the command line.
+*)
+
+PROCEDURE deleteWord(VAR line:  ARRAY OF CHAR;
+                         start: CARDINAL);
+(*
+  OPERATION:
+    Delete's the Word begiining at the character specified by 'start' from
+    the input line.
+*)
+
+PROCEDURE deTabString(VAR value: ARRAY OF CHAR);
+(*
+  OPERATION:
+    Will replace any tab characters in the specified string with spaces.
+*)
+
+PROCEDURE getCommandLine(VAR line: ARRAY OF CHAR);
+(*
+  OPERATION:
+    Takes a copy of the shell command line, as supplied at startup in the X & Y
+    registers.
+*)
+
+PROCEDURE getParameters(VAR line: ARRAY OF CHAR);
+(*
+  OPERATION:
+    Takes a copy of the shell command line, as supplied at startup in the X & Y
+    registers. It then deletes the first word which (normally) is the actual
+    command.  What is left, is the parameters.
+*)
+
+PROCEDURE getSwitchValue(VAR line:    ARRAY OF CHAR;
+                             switch:  ARRAY OF CHAR;
+                         VAR value:   ARRAY OF CHAR);
+(*
+  OPERATION:
+    For a switch that also has a parameter, this procedure will return
+    the value of the parameter, and will then delete the switch and it's
+    parameter from the command line.
+*)
+
+PROCEDURE getWord(VAR line:   ARRAY OF CHAR;
+                      start:  CARDINAL;
+                  VAR value:  ARRAY OF CHAR);
+(*
+  OPERATION:
+    Will extract and return the Word in the input line beginning at
+    the character pointed to by 'start'.
+*)
+
+PROCEDURE switchPresent(VAR line:   ARRAY OF CHAR;
+                            switch: ARRAY OF CHAR): BOOLEAN;
+(*
+  OPERATION:
+    Returns a boolean value indicating whether the specified switch
+    is present in the command line.
+*)
+
+PROCEDURE trimString(VAR value: ARRAY OF CHAR);
+(*
+  OPERATION:
+    Will delete all leading and trailing spaces from the supplied string.
+*)
+
+PROCEDURE UserAborted():BOOLEAN;
+(*
+  OPERATION:
+    Does a shell call to determine whether the user has pressed
+    command-period, and returns true if so.
+*)
+
+END EZCommandLine.

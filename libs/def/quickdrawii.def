@@ -1,0 +1,957 @@
+(*$NoImp*)
+DEFINITION MODULE QuickDrawII;
+(*
+  Quick Draw II Interface File
+*)
+
+FROM Common IMPORT
+  String255Ptr, Fixed, SCB, Ref;
+FROM FontManager IMPORT
+  FontID;
+FROM MemoryManager IMPORT
+  Handle;
+FROM SYSTEM IMPORT
+  ADDRESS, BYTE;
+
+TYPE
+  (*
+    DrawStringWidth flag
+  *)
+  DrawStringFlag =  (dswStrIsHandle, dswStrIsResource, dswCString,
+                     dswWString, dswNul4, dswNul5, dswNul6, dswNul7, dswNul8,
+                     dswNul9, dswNul10, dswNul11, dswNul12, dswTruncLeft,
+                     dswTruncCenter, dswNoCondense);
+  DrawStringFlagSet = SET OF DrawStringFlag;
+
+CONST
+  (*
+    When you want to use right truncation, you will have to add this
+    constant to the rest of the flags since it is a combination of two
+    bit settings.
+  *)
+  dswTruncRight = DrawStringFlagSet{dswTruncLeft, dswTruncCenter};
+
+  (*
+    Font Flags
+  *)
+  widMaxSize      =   0001H;      (* nonproportional spacing *)
+  zeroSize        =   0002H;      (* numeric spacing         *)
+
+  (*
+    Color data
+  *)
+  table320        =   32H;        (* 320 color table *)
+  table640        =   32H;        (* 640 color table *)
+
+  (*
+    GrafPort sizes
+  *)
+  maskSize        =   08H;        (* mask size        *)
+  locSize         =   10H;        (* loc size         *)
+  patSize         =   20H;        (* pattern size     *)
+  pnStateSize     =   32H;        (* pen state size   *)
+  portSize        =   0AAH;        (* size of grafPort *)
+
+  (*
+    Color masks
+  *)
+  blueMask        =   000FH;      (* mask for blue nibble  *)
+  greenMask       =   00F0H;      (* mask for green nibble *)
+  redMask         =   0F00H;      (* mask for red nibble   *)
+
+  (*
+    Master colors - mode indicated next to name
+  *)
+  black           =   0000H;      (* works in 320 & 640 modes *)
+  blue            =   000FH;      (* works in 320 & 640 modes *)
+  darkGreen320    =   0080H;
+  green320        =   00E0H;
+  green640        =   00F0H;
+  lightBlue320    =   04DFH;
+  purple320       =   072CH;
+  darkGray320     =   0777H;
+  periwinkleBlue320 = 078FH;
+  brown320        =   0841H;
+  lightGray320    =   0CCCH;
+  red320          =   0D00H;
+  lilac320        =   0DAFH;
+  red640          =   0F00H;
+  orange320       =   0F70H;
+  flesh320        =   0FA9H;
+  yellow          =   0FF0H;      (* works in 320 & 640 modes *)
+  white           =   0FFFH;      (* works in 320 & 640 modes *)
+
+  (*
+    Pen modes
+  *)
+  modeCopy        =   0000H;      (* copy source to destination           *)
+  modeOR          =   0001H;      (* overlay source & destination         *)
+  modeXOR         =   0002H;      (* XOR pen with destination             *)
+  modeBIC         =   0003H;      (* bit clear pen with destination       *)
+  notCopy         =   8000H;      (* copy (not source) to destination     *)
+  notOR           =   8001H;      (* overlay (not source) & destination   *)
+  notXOR          =   8002H;      (* XOR (not pen) with destination       *)
+  notBIC          =   8003H;      (* bit clear (not pen) with destination *)
+
+  (*
+    Pen and text modes
+  *)
+  modeForeCopy    =   0004H;      (* copy foreground pixels to destination   *)
+  modeForeOR      =   0005H;      (* OR foreground pixels into destination   *)
+  modeForeXOR     =   0006H;      (* XOR foreground pixels into destination  *)
+  modeForeBIC     =   0007H;      (* BIC foreground pixels into destination  *)
+  notForeCopy     =   8004H;      (* turn background to foreground, then copy*)
+                                  (* foreground pixels into destination      *)
+  notForeOR       =   8005H;      (* turn background to foreground, then OR  *)
+                                  (* foreground pixels into destination      *)
+  notForeXOR      =   8006H;      (* turn background to foreground, then XOR *)
+                                  (* foreground pixels into destination      *)
+  notForeBIC      =   8007H;      (* turn background to foreground, then BIC *)
+                                  (* foreground pixels into destination      *)
+
+  (*
+    QD Start-up modes
+  *)
+  mode320         =   00H;        (* 320 graphics mode *)
+  mode640         =   80H;        (* 640 graphics mode *)
+
+  (*
+    SCB Bit Values
+  *)
+  colorTableNo    =   0FH;        (* color table number                      *)
+  scbReserved     =   4;        (* reserved for future use                 *)
+  scbFill         =   5;        (* fill mode on                            *)
+  scbInterrupt    =   6;        (* interrupt generated when line refreshed *)
+  scbColorMode    =   7;        (* 640 mode on                             *)
+  scbStayInGraph  =   8;        (* stay in graphics mode at QDStartUp      *)
+
+TYPE
+  (*
+    Flags for use with UseColorTable and RestoreColorTable
+  *)
+  ColorTableFlag = (ctf0, ctf1, ctf2, ctf3, ctf4, ctf5, ctf6, ctf7, ctf8,
+                    ctf9, ctf10, ctf11, ctf12, ctfIncludeMenuBar, 
+                    ctfDontCallCtlNewRes, ctfReserved);
+  ColorTableFlagSet = SET OF ColorTableFlag;
+
+  (*
+    Text styles
+  *)
+  TextStyleBit = (tsBold, tsItalic, tsUnderline, tsOutline, tsShadow,
+                  tsReserved5, tsReserved6, tsReserved7, tsReserved8,
+                  tsReserved9, tsReserved10, tsReserved11, tsReserved12,
+                  tsReserved13, tsReserved14, tsReserved15);
+  TextStyle = SET OF TextStyleBit;
+
+  Point =
+    RECORD
+      y:  INTEGER;
+      x:  INTEGER;
+    END;
+  PointPtr = POINTER TO Point;
+
+  RectKind = (normal, mac, points);
+
+  Rect =
+    RECORD
+      CASE :RectKind OF
+        normal:  v1:        INTEGER;
+                 h1:        INTEGER;
+                 v2:        INTEGER;
+                 h2:        INTEGER;
+      | mac:     top:       INTEGER;
+                 left:      INTEGER;
+                 bottom:    INTEGER;
+                 right:     INTEGER;
+      | points:  topLeft:   Point;
+                 botRight:  Point;
+      END;
+    END;
+  RectPtr = POINTER TO Rect;
+
+  LocInfo =
+    RECORD
+      portSCB:          SCB;
+      ptrToPixelImage:  ADDRESS;
+      width:            INTEGER;
+      boundsRect:       Rect;
+    END;
+  LocInfoPtr = POINTER TO LocInfo;
+
+  (*
+    Buffer sizing record
+  *)
+  BufDimRec =
+    RECORD
+      maxWidth:        CARDINAL;
+      textBufHeight:   CARDINAL;
+      textBufferWords: CARDINAL;
+      fontWidth:       CARDINAL;
+    END;
+
+  (*
+    Font globals record
+  *)
+  FontGlobalsRecord =
+    RECORD
+      fgFontID:    CARDINAL;
+      fgStyle:     CARDINAL;
+      fgSize:      CARDINAL;
+      fgVersion:   CARDINAL;
+      fgWidMax:    CARDINAL;
+      fgFBRExtent: CARDINAL;
+    END;
+
+  (*
+    FontInfo record
+  *)
+  FontInfoRecord =
+    RECORD
+      ascent:  CARDINAL;
+      descent: CARDINAL;
+      widMax:  CARDINAL;
+      leading: CARDINAL;
+    END;
+
+  (*
+    Paint parameter block
+  *)
+  PaintParamBlock =
+    RECORD
+      ptrToSourceLocInfo:  LocInfoPtr;
+      ptrToDestLocInfo:    LocInfoPtr;
+      ptrToSourceRect:     RectPtr;
+      ptrToDestPoint:      PointPtr;
+      mode:                CARDINAL;
+      maskHandle:          Handle;
+    END;
+  PaintParamBlockPtr = POINTER TO PaintParamBlock;
+
+  Pattern = ARRAY [0..31] OF BYTE;
+  PatternPtr = POINTER TO Pattern;
+
+  Mask = ARRAY [0..7] OF BYTE;
+  MaskPtr = POINTER TO Mask;
+
+  (*
+    Pen state record
+  *)
+  PenState =
+    RECORD
+      psPnLoc :   Point;
+      psPnSize:   Point;
+      psPnMode:   CARDINAL;
+      psPnPat:    Pattern;
+      psPnMask:   Mask;
+    END;
+  PenStatePtr = POINTER TO PenState;
+
+  (* Font record *)
+  FontRecord =
+    RECORD
+      offsetToMF:  CARDINAL;
+      family:      CARDINAL;
+      style:       CARDINAL;
+      size:        CARDINAL;
+      version:     CARDINAL;
+      fbrExtent:   CARDINAL;
+      highowTLoc:  CARDINAL;
+    END;
+  FontRecordPtr = POINTER TO FontRecord;
+  FontHandle = POINTER TO FontRecordPtr;
+
+  (*
+    ROM font record
+  *)
+  ROMFontRec =
+    RECORD
+      rfFamNum:     CARDINAL;
+      rfFamStyle:   CARDINAL;
+      rfSize:       CARDINAL;
+      rfFontHandle: FontHandle;
+      rfNamePtr:    String255Ptr;
+      rfFBRExtent:  CARDINAL;
+    END;
+  ROMFontRecPtr = POINTER TO ROMFontRec;
+
+  (*
+    Polygon, defined by user
+  *)
+  Polygon =
+    RECORD
+      polySize:   CARDINAL;
+      polyBBox:   Rect;
+      polyPoints: ARRAY [0..30] OF Point;  (* may be modified by user *)
+    END;
+  PolygonPtr = POINTER TO Polygon;
+  PolygonHandle = POINTER TO PolygonPtr;
+
+  (* Cursor RECORD.  Array dimensions can be modified for your cursor.       *)
+  (* WARNING:  hotSpotX, hotSpotY may not be in the location expected, since *)
+  (* cursorImage and cursorMask can change size.  Use pointer math to        *)
+  (* compute their positions for any cursor you did not define using this    *)
+  (* RECORD.                                                                 *)
+  Cursor =
+    RECORD
+      cursorHeight: CARDINAL;
+      cursorWidth:  CARDINAL;
+      cursorImage:  ARRAY [1..44] OF CARDINAL;
+      cursorMask:   ARRAY [1..44] OF CARDINAL;
+      hotSpotY:     CARDINAL;
+      hotSpotX:     CARDINAL;
+    END;
+  CursorPtr = POINTER TO Cursor;
+
+  (*
+    QD Auxilliary icon record
+  *)
+  IconRec =
+    RECORD
+      iconType:   CARDINAL;
+      iconSize:   CARDINAL;
+      iconHeight: CARDINAL;
+      iconWidth:  CARDINAL;
+      iconImage:  ARRAY [1..44] OF BYTE;  (* Array dimensions can be  *)
+      iconMask:   ARRAY [1..44] OF BYTE;  (*   modified for your icon *)
+    END;
+  IconRecPtr = POINTER TO IconRec;
+
+  IconFlagBit = (deviceIcon, miscIcon, useOpenFolderIcons, ifReserved3,
+                 ifReserved4, ifReserved5, ifReserved6, ifReserved7,
+                 ifReserved8, ifReserved9, ifReserved10, ifReserved11,
+                 ifReserved12, ifReserved13, ifReserved14, ifReserved15);
+  IconFlag = SET OF IconFlagBit;
+
+  Char = [0..255];
+
+  ColorTable = ARRAY [0..15] OF CARDINAL;
+  ColorTablePtr = POINTER TO ColorTable;
+
+  GrafPort =
+    RECORD
+      portInfo:   LocInfo;
+      portRect:   Rect;
+      clipRgn:    Handle;
+      visRgn:     Handle;
+      bkPat:      Pattern;
+      pnLoc:      Point;
+      pnSize:     Point;
+      pnMode:     CARDINAL;
+      pnPat:      Pattern;
+      pnMask:     Mask;
+      pnVis:      CARDINAL;
+      fontHandle: FontHandle;
+      fontID:     FontID;
+      fontFlags:  CARDINAL;
+      txSize:     INTEGER;
+      txFace:     TextStyle;
+      txMode:     CARDINAL;
+      spExtra:    Fixed;
+      chExtra:    Fixed;
+      fgColor:    CARDINAL;
+      bgColor:    CARDINAL;
+      picSave:    Handle;
+      rgnSave:    Handle;
+      polySave:   Handle;
+      grafProcs:  ADDRESS;
+      arcRot:     INTEGER;
+      userField:  LONGINT;
+      sysField:   LONGINT;
+    END;
+  GrafPortPtr = POINTER TO GrafPort;
+
+PROCEDURE QDBootInit; TOOL 0104H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE QDStartup(dPageAddr:  CARDINAL;
+                    masterSCB:  SCB;
+                    maxWidth:   CARDINAL;
+                    userID:     CARDINAL); TOOL 0204H;
+
+PROCEDURE QDShutDown; TOOL 0304H;
+
+PROCEDURE QDVersion(): CARDINAL; TOOL 0404H;
+
+PROCEDURE QDReset; TOOL 0504H;       (* WARNING: an application should
+                                                    NEVER make this call *)
+
+PROCEDURE QDStatus(): BOOLEAN; TOOL 0604H;
+
+PROCEDURE AddPt(VAR srcPtPtr, destPtPtr: Point); TOOL 8004H;
+
+PROCEDURE CharBounds(theChar: Char; VAR result: Rect); TOOL 0AC04H;
+
+PROCEDURE CharWidth(theChar: Char): CARDINAL; TOOL 0A804H;
+
+PROCEDURE ClearScreen(colorWord: CARDINAL); TOOL 1504H;
+
+PROCEDURE ClipRect(VAR theRect: Rect); TOOL 2604H;
+
+PROCEDURE ClosePoly; TOOL 0C204H;
+
+PROCEDURE ClosePort(thePort: GrafPortPtr); TOOL 1A04H;
+
+PROCEDURE CloseRgn(theRgnHandle: Handle); TOOL 6E04H;
+
+PROCEDURE CopyRgn(srcRgnHandle, destRgnHandle: Handle); TOOL 6904H;
+
+PROCEDURE CStringBounds(theCString: ADDRESS; VAR result: Rect); TOOL 0AE04H;
+
+PROCEDURE CStringWidth(theCString: ADDRESS): CARDINAL; TOOL 0AA04H;
+
+PROCEDURE DiffRgn (rgn1Handle, rgn2Handle, diffRgnHandle: Handle); TOOL 7304H;
+
+PROCEDURE DisposeRgn(theRgnHandle: Handle); TOOL 6804H;
+
+PROCEDURE DrawChar(theChar: Char); TOOL 0A404H;
+
+PROCEDURE DrawCString(theString: ADDRESS); TOOL 0A604H;
+
+PROCEDURE DrawString(theString: String255Ptr); TOOL 0A504H;
+
+PROCEDURE DrawText(theText: ADDRESS; textLen: CARDINAL); TOOL 0A704H;
+
+PROCEDURE EmptyRgn(theRgnHandle: Handle): BOOLEAN; TOOL 7804H;
+
+PROCEDURE EqualPt(VAR point1, point2: Point): BOOLEAN; TOOL 8304H;
+
+PROCEDURE EqualRect(VAR rect1, rect2: Rect): BOOLEAN; TOOL 5104H;
+
+PROCEDURE EqualRgn(Handle1, Handle2: Handle): BOOLEAN; TOOL 7704H;
+
+PROCEDURE EraseArc(VAR theRect:     Rect; 
+                       startAngle:  CARDINAL;
+                       arcAngle:    CARDINAL); TOOL 6404H;
+
+PROCEDURE EraseOval(VAR theRect: Rect); TOOL 5A04H;
+
+PROCEDURE ErasePoly(thePolyHandle: PolygonHandle); TOOL 0BE04H;
+
+PROCEDURE EraseRect(VAR theRect: Rect); TOOL 5504H;
+
+PROCEDURE EraseRgn(theRgnHandle: Handle); TOOL 7B04H;
+
+PROCEDURE EraseRRect(VAR theRect:     Rect;
+                         ovalWidth:   CARDINAL;
+                         ovalHeight:  CARDINAL); TOOL 5F04H;
+
+PROCEDURE FillArc(VAR theRect:    Rect;
+                      startAngle: CARDINAL;
+                      arcAngle:   CARDINAL;
+                  VAR thePattern: Pattern); TOOL 6604H;
+
+PROCEDURE FillOval(VAR theRect: RectPtr; VAR thePattern: Pattern); TOOL 5C04H;
+
+PROCEDURE FillPoly(    thePolyHandle: PolygonHandle;
+                   VAR thePattern:    Pattern); TOOL 0C004H;
+
+PROCEDURE FillRect (VAR theRect: Rect; VAR thePattern: Pattern); TOOL 5704H;
+
+PROCEDURE FillRgn(theRgnHandle: Handle; VAR thePattern: Pattern); TOOL 7D04H;
+
+PROCEDURE FillRRect(VAR theRect:    Rect;
+                        ovalWidth:  CARDINAL;
+                        ovalHeight: CARDINAL;
+                    VAR thePattern: Pattern); TOOL 6104H;
+
+PROCEDURE ForceBufDims(maxWidth:      CARDINAL;
+                       maxFontHeight: CARDINAL;
+                       maxFBRExtent:  CARDINAL); TOOL 0CC04H;
+
+PROCEDURE FrameArc(VAR theRect:     Rect;
+                       startAngle:  CARDINAL;
+                       arcAngle:    CARDINAL); TOOL 6204H;
+
+PROCEDURE FrameOval(VAR theRect: Rect); TOOL 5804H;
+
+PROCEDURE FramePoly(thePolyHandle: PolygonHandle); TOOL 0BC04H;
+
+PROCEDURE FrameRect(VAR theRect: Rect); TOOL 5304H;
+
+PROCEDURE FrameRgn(theRgnHandle: Handle); TOOL 7904H;
+
+PROCEDURE FrameRRect(VAR theRect:     Rect;
+                         ovalWidth:   CARDINAL;
+                         ovalHeight:  CARDINAL); TOOL 5D04H;
+
+PROCEDURE Get640Colors(): PatternPtr; TOOL 0DA04H;
+
+PROCEDURE GetAddress(tableID: CARDINAL): ADDRESS; TOOL 0904H;
+
+PROCEDURE GetArcRot(): CARDINAL; TOOL 0B104H;
+
+PROCEDURE GetBackColor(): CARDINAL; TOOL 0A304H;
+
+PROCEDURE GetBackPat(VAR thePattern: Pattern); TOOL 3504H;
+
+PROCEDURE GetCharExtra(): Fixed; TOOL 0D504H;
+
+PROCEDURE GetClip(theRgnHandle: Handle); TOOL 2504H;
+
+PROCEDURE GetClipHandle(): Handle; TOOL 0C704H;
+
+PROCEDURE GetColorEntry(tableNumber:  CARDINAL;
+                        entryNumber:  CARDINAL): CARDINAL; TOOL 1104H;
+
+PROCEDURE GetColorTable(    tableNumber:  CARDINAL;
+                        VAR saveTable:    ColorTable); TOOL 0F04H;
+
+PROCEDURE GetCursorAdr(): CursorPtr; TOOL 8F04H;
+
+PROCEDURE GetFGSize(): CARDINAL; TOOL 0CF04H;
+
+PROCEDURE GetFont(): FontHandle; TOOL 9504H;
+
+PROCEDURE GetFontFlags(): CARDINAL; TOOL 9904H;
+
+PROCEDURE GetFontGlobals(VAR theFGRec: FontGlobalsRecord); TOOL 9704H;
+
+PROCEDURE GetFontID(): LONGINT; TOOL 0D104H;
+
+PROCEDURE GetFontInfo(VAR theFIRec: FontInfoRecord); TOOL 9604H;
+
+PROCEDURE GetFontLore(recordPtr:  ADDRESS;
+                      recordSize: CARDINAL): CARDINAL; TOOL 0D904H;
+
+PROCEDURE GetForeColor(): CARDINAL; TOOL 0A104H;
+
+PROCEDURE GetGrafProcs(): ADDRESS; TOOL 4504H;
+
+PROCEDURE GetMasterSCB(): SCB; TOOL 1704H;
+
+PROCEDURE GetPen(VAR thePoint: Point); TOOL 2904H;
+
+PROCEDURE GetPenMask(VAR theMask: Mask); TOOL 3304H;
+
+PROCEDURE GetPenMode(): CARDINAL; TOOL 2F04H;
+
+PROCEDURE GetPenPat(VAR thePattern: Pattern); TOOL 3104H;
+
+PROCEDURE GetPenSize(VAR thePoint: Point); TOOL 2D04H;
+
+PROCEDURE GetPenState(VAR oldPenState: PenState); TOOL 2B04H;
+
+PROCEDURE GetPicSave(): Handle; TOOL 3F04H;
+
+PROCEDURE GetPixel(h, v: CARDINAL): CARDINAL; TOOL 8804H;
+
+PROCEDURE GetPolySave(): Handle; TOOL 4304H;
+
+PROCEDURE GetPort(): GrafPortPtr; TOOL 1C04H;
+
+PROCEDURE GetPortLoc(VAR theLocInfo: LocInfo); TOOL 1E04H;
+
+PROCEDURE GetPortRect(VAR theRect: Rect); TOOL 2004H;
+
+PROCEDURE GetRgnSave(): Handle; TOOL 4104H;
+
+PROCEDURE GetROMFont(VAR recordPtr: ROMFontRec); TOOL 0D804H;
+
+PROCEDURE GetSCB(scanLine: CARDINAL): SCB; TOOL 1304H;
+
+PROCEDURE GetSpaceExtra(): Fixed; TOOL 9F04H;
+
+PROCEDURE GetStandardSCB(): SCB; TOOL 0C04H;
+
+PROCEDURE GetSysField(): LONGINT; TOOL 4904H;
+
+PROCEDURE GetSysFont(): FontHandle; TOOL 0B304H;
+
+PROCEDURE GetTextFace(): CARDINAL; TOOL 9B04H;
+
+PROCEDURE GetTextMode(): CARDINAL; TOOL 9D04H;
+
+PROCEDURE GetTextSize(): CARDINAL; TOOL 0D304H;
+
+PROCEDURE GetUserField(): LONGINT; TOOL 4704H;
+
+PROCEDURE GetVisHandle(): Handle; TOOL 0C904H;
+
+PROCEDURE GetVisRgn(theRgnHandle: Handle); TOOL 0B504H;
+
+PROCEDURE GlobalToLocal(VAR thePoint: Point); TOOL 8504H;
+
+PROCEDURE GrafOff; TOOL 0B04H;
+
+PROCEDURE GrafOn; TOOL 0A04H;
+
+PROCEDURE HideCursor; TOOL 9004H;
+
+PROCEDURE HidePen; TOOL 2704H;
+
+PROCEDURE InflateTextBuffer(newWidth, newHeight: CARDINAL); TOOL 0D704H;
+
+PROCEDURE InitColorTable(VAR theTable: ColorTable); TOOL 0D04H;
+
+PROCEDURE InitCursor; TOOL 0CA04H;
+
+PROCEDURE InitPort(thePort: GrafPortPtr); TOOL 1904H;
+
+PROCEDURE InsetRect(VAR theRect: Rect; dH, dV: CARDINAL); TOOL 4C04H;
+
+PROCEDURE InsetRgn(theRgnHandle: Handle; dH, dV: CARDINAL); TOOL 7004H;
+
+PROCEDURE InvertArc(VAR theRect:    Rect; 
+                        startAngle: CARDINAL;
+                        arcAngle:   CARDINAL); TOOL 6504H;
+
+PROCEDURE InvertOval(VAR theRect: Rect); TOOL 5B04H;
+
+PROCEDURE InvertPoly(thePolyHandle: PolygonHandle); TOOL 0BF04H;
+
+PROCEDURE InvertRect(VAR theRect: Rect); TOOL 5604H;
+
+PROCEDURE InvertRgn(theRgnHandle: Handle); TOOL 7C04H;
+
+PROCEDURE InvertRRect(VAR theRect:    Rect;
+                          ovalWidth:  CARDINAL;
+                          ovalHeight: CARDINAL); TOOL 6004H;
+
+PROCEDURE KillPoly(thePolyHandle: PolygonHandle); TOOL 0C304H;
+
+PROCEDURE Line(dH, dV: CARDINAL); TOOL 3D04H;
+
+PROCEDURE LineTo(h, v: CARDINAL); TOOL 3C04H;
+
+PROCEDURE LocalToGlobal(VAR thePoint: Point); TOOL 8404H;
+
+PROCEDURE MapPoly(    thePoly:  PolygonHandle;
+                  VAR srcRect:  Rect;
+                  VAR destRect: Rect); TOOL 0C504H;
+
+PROCEDURE MapPt(VAR thePoint: Point; VAR srcRect, destRect: Rect); TOOL 8A04H;
+
+PROCEDURE MapRect(VAR theRect, srcRect, destRect: Rect); TOOL 8B04H;
+
+PROCEDURE MapRgn(    mapRgnHandle:  Handle;
+                 VAR srcRect:       Rect;
+                 VAR destRect:      Rect); TOOL 8C04H;
+
+PROCEDURE Move(dH, dV: CARDINAL); TOOL 3B04H;
+
+PROCEDURE MovePortTo(h, v: CARDINAL); TOOL 2204H;
+
+PROCEDURE MoveTo(h, v: CARDINAL); TOOL 3A04H;
+
+PROCEDURE NewRgn(): Handle; TOOL 6704H;
+
+PROCEDURE NotEmptyRect(VAR theRect: Rect): BOOLEAN; TOOL 5204H;
+
+PROCEDURE ObscureCursor; TOOL 9204H;
+
+PROCEDURE OffsetPoly(thePolyHandle: PolygonHandle;
+                     dH:            CARDINAL;
+                     dV:            CARDINAL); TOOL 0C404H;
+
+PROCEDURE OffsetRect(VAR theRect: Rect; dH, dV: CARDINAL); TOOL 4B04H;
+
+PROCEDURE OffsetRgn(theRgnHandle: Handle; dH, dV: CARDINAL); TOOL 6F04H;
+
+PROCEDURE OpenPoly(): PolygonHandle; TOOL 0C104H;
+
+PROCEDURE OpenPort(newPort: GrafPortPtr); TOOL 1804H;
+
+PROCEDURE OpenRgn; TOOL 6D04H;
+
+PROCEDURE PaintArc(VAR theRect:     Rect;
+                       startAngle:  CARDINAL;
+                       arcAngle:    CARDINAL); TOOL 6304H;
+
+PROCEDURE PaintOval(VAR theRect: Rect); TOOL 5904H;
+
+PROCEDURE PaintPixels(VAR thePaintParam: PaintParamBlock); TOOL 7F04H;
+
+PROCEDURE PaintPoly(thePolyHandle: PolygonHandle); TOOL 0BD04H;
+
+PROCEDURE PaintRect(VAR theRect: Rect); TOOL 5404H;
+
+PROCEDURE PaintRgn(theRgnHandle: Handle); TOOL 7A04H;
+
+PROCEDURE PaintRRect(VAR theRect:     Rect;
+                         ovalWidth:   CARDINAL;
+                         ovalHeight:  CARDINAL); TOOL 5E04H;
+
+PROCEDURE PenNormal; TOOL 3604H;
+
+PROCEDURE PPToPort(    srcLoc:        LocInfoPtr;
+                   VAR srcRect:       Rect;
+                       destX:         CARDINAL;
+                       destY:         CARDINAL;
+                       transferMode:  CARDINAL); TOOL 0D604H;
+
+PROCEDURE Pt2Rect(VAR point1, point2: Point; VAR destRect: Rect); TOOL 5004H;
+
+PROCEDURE PtInRect(VAR thePoint:  Point;
+                   VAR theRect:   Rect): BOOLEAN; TOOL 4F04H;
+
+PROCEDURE PtInRgn(VAR thePoint:     Point; 
+                      theRgnHandle: Handle): BOOLEAN; TOOL 7504H;
+
+PROCEDURE Random(): INTEGER; TOOL 8604H;
+
+PROCEDURE RectInRgn(VAR theRect:      Rect;
+                        theRgnHandle: Handle): BOOLEAN; TOOL 7604H;
+
+PROCEDURE RectRgn(theRgnHandle: Handle; VAR theRect: Rect); TOOL 6C04H;
+
+PROCEDURE RestoreBufDims(VAR saveSizeInfo: BufDimRec); TOOL 0CE04H;
+
+PROCEDURE SaveBufDims(VAR saveSizeInfo: BufDimRec); TOOL 0CD04H;
+
+PROCEDURE ScalePt(VAR thePoint:           Point;
+                  VAR srcRect, destRect:  Rect); TOOL 8904H;
+
+PROCEDURE ScrollRect(VAR theRect:         Rect;
+                         dH:              CARDINAL;
+                         dV:              CARDINAL;
+                         updateRgnHandle: Handle); TOOL 7E04H;
+
+PROCEDURE SectRect(VAR rect1, rect2, destRect: Rect): BOOLEAN; TOOL 4D04H;
+
+PROCEDURE SectRgn(rgn1Handle, rgn2Handle, destRgnHandle: Handle); TOOL 7104H;
+
+PROCEDURE Set640Color(colorNum: CARDINAL); TOOL 0DB04H;
+
+PROCEDURE SetAllSCBs(newSCB: SCB); TOOL 1404H;
+
+PROCEDURE SetArcRot(arcRotValue: CARDINAL); TOOL 0B004H;
+
+PROCEDURE SetBackColor(backColor: CARDINAL); TOOL 0A204H;
+
+PROCEDURE SetBackPat(VAR thePattern: Pattern); TOOL 3404H;
+
+PROCEDURE SetBufDims(maxWidth:      CARDINAL;
+                     maxFontHeight: CARDINAL;
+                     maxFBRExtent:  CARDINAL); TOOL 0CB04H;
+
+PROCEDURE SetCharExtra(charExtra: Fixed); TOOL 0D404H;
+
+PROCEDURE SetClip(rgnHandle: Handle); TOOL 2404H;
+
+PROCEDURE SetClipHandle(clipRgnHandle: Handle); TOOL 0C604H;
+
+PROCEDURE SetColorEntry(tableNumber:  CARDINAL;
+                        entryNumber:  CARDINAL;
+                        newColor:     CARDINAL); TOOL 1004H;
+
+PROCEDURE SetColorTable(    tableNumber:  CARDINAL;
+                        VAR newTable:     ColorTable); TOOL 0E04H;
+
+PROCEDURE SetCursor(VAR theCursor: Cursor); TOOL 8E04H;
+
+PROCEDURE SetEmptyRgn(theRgnHandle: Handle); TOOL 6A04H;
+
+PROCEDURE SetFont(newFontHandle: FontHandle); TOOL 9404H;
+
+PROCEDURE SetFontFlags(fontFlags: CARDINAL); TOOL 9804H;
+
+PROCEDURE SetFontID(newFontID: FontID); TOOL 0D004H;
+
+PROCEDURE SetForeColor(foreColor: CARDINAL); TOOL 0A004H;
+
+PROCEDURE SetGrafProcs(grafProcsPtr: ADDRESS); TOOL 4404H;
+
+PROCEDURE SetIntUse(useInt: BOOLEAN); TOOL 0B604H;
+
+PROCEDURE SetMasterSCB(masterSCB: SCB); TOOL 1604H;
+
+PROCEDURE SetOrigin(h, v: CARDINAL); TOOL 2304H;
+
+PROCEDURE SetPenMask(VAR theMask: Mask); TOOL 3204H;
+
+PROCEDURE SetPenMode(penMode: CARDINAL); TOOL 2E04H;
+
+PROCEDURE SetPenPat(VAR thePattern: Pattern); TOOL 3004H;
+
+PROCEDURE SetPenSize(width, height: CARDINAL); TOOL 2C04H;
+ 
+PROCEDURE SetPenState(VAR newPenState: PenState); TOOL 2A04H;
+
+PROCEDURE SetPicSave(picSaveValue: Handle); TOOL 3E04H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE SetPolySave(polySaveValue: Handle); TOOL 4204H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE SetPort(thePort: GrafPortPtr); TOOL 1B04H;
+
+PROCEDURE SetPortLoc(VAR theLocInfo: LocInfo); TOOL 1D04H;
+
+PROCEDURE SetPortRect(VAR theRect: Rect); TOOL 1F04H;
+
+PROCEDURE SetPortSize(portWidth, portHeight: CARDINAL); TOOL 2104H;
+
+PROCEDURE SetPt(VAR srcPoint: Point; h, v: CARDINAL); TOOL 8204H;
+
+PROCEDURE SetRandSeed(randomSeed: LONGINT); TOOL 8704H;
+
+PROCEDURE SetRect(VAR theRect:  Rect;
+                      left:     CARDINAL;
+                      top:      CARDINAL;
+                      right:    CARDINAL;
+                      bottom:   CARDINAL); TOOL 4A04H;
+
+PROCEDURE SetRectRgn(theRgnHandle:  Handle;
+                     left:          CARDINAL;
+                     top:           CARDINAL;
+                     right:         CARDINAL;
+                     bottom:        CARDINAL); TOOL 6B04H;
+
+PROCEDURE SetRgnSave(rgnSaveValue: Handle); TOOL 4004H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE SetSCB(scanLine: CARDINAL; newSCB: SCB); TOOL 1204H;
+
+PROCEDURE SetSolidBackPat(colorNum: CARDINAL); TOOL 3804H;
+
+PROCEDURE SetSolidPenPat(colorNum: CARDINAL); TOOL 3704H;
+
+PROCEDURE SetSpaceExtra(spaceExtra: Fixed); TOOL 9E04H;
+
+PROCEDURE SetStdProcs(stdProcRecPtr: ADDRESS); TOOL 8D04H;
+
+PROCEDURE SetSysField(sysFieldValue: LONGINT); TOOL 4804H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE SetSysFont(theFontHandle: FontHandle); TOOL 0B204H;
+
+PROCEDURE SetTextFace(textFace: CARDINAL); TOOL 9A04H;
+
+PROCEDURE SetTextMode(textMode: CARDINAL); TOOL 9C04H;
+
+PROCEDURE SetTextSize(textSize: CARDINAL); TOOL 0D204H;
+
+PROCEDURE SetUserField(userFieldValue: LONGINT); TOOL 4604H;
+
+PROCEDURE SetVisHandle(theRgnHandle: Handle); TOOL 0C804H;
+
+PROCEDURE SetVisRgn(theRgnHandle: Handle); TOOL 0B404H;
+
+PROCEDURE ShowCursor; TOOL 9104H;
+
+PROCEDURE ShowPen; TOOL 2804H;
+
+PROCEDURE SolidPattern(    colorNum:    CARDINAL;
+                       VAR thePattern:  Pattern); TOOL 3904H;
+
+PROCEDURE StringBounds(    theString: String255Ptr;
+                       VAR theRect:   Rect); TOOL 0AD04H;
+
+PROCEDURE StringWidth(theString: String255Ptr): CARDINAL; TOOL 0A904H;
+
+PROCEDURE SubPt(VAR srcPoint, destPoint: Point); TOOL 8104H;
+
+PROCEDURE TextBounds(    theText: ADDRESS;
+                         textLen: CARDINAL;
+                     VAR theRect: Rect); TOOL 0AF04H;
+
+PROCEDURE TextWidth(theText: ADDRESS; textLen: CARDINAL): CARDINAL; TOOL 0AB04H;
+
+PROCEDURE UnionRect(VAR rect1, rect2, destRect: Rect); TOOL 4E04H;
+
+PROCEDURE UnionRgn(rgn1Handle, rgn2Handle, destRgnHandle: Handle); TOOL 7204H;
+
+PROCEDURE XorRgn (rgn1Handle, rgn2Handle, destRgnHandle: Handle); TOOL 7404H;
+
+(* ------------------------ QuickDraw Auxiliary Tool Set -------------------- *)
+
+PROCEDURE QDAuxBootInit; TOOL 0112H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE QDAuxStartup; TOOL 0212H;
+
+PROCEDURE QDAuxShutDown; TOOL 0312H;
+
+PROCEDURE QDAuxVersion(): CARDINAL; TOOL 0412H;
+
+PROCEDURE QDAuxReset; TOOL 0512H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE QDAuxStatus(): BOOLEAN; TOOL 0612H;
+
+PROCEDURE CalcMask(VAR srcLocInfo:  LocInfo;
+                   VAR srcRect:     Rect;
+                   VAR destLocInfo: LocInfo;
+                   VAR destRect:    Rect;
+                       resMode:     CARDINAL;
+                       thePattern:  PatternPtr;
+                       leakTblPtr:  ADDRESS); TOOL 0E12H;
+      
+PROCEDURE ClosePicture; TOOL 0B904H;
+
+PROCEDURE CopyPixels(VAR srcLocPtr, destLocPtr: LocInfo;
+                     VAR srcRect, destRect:     Rect;
+                         xFerMode:              CARDINAL;
+                         maskRgn:               Handle); TOOL 0912H;
+
+PROCEDURE DrawIcon(iconPtr:     IconRecPtr;
+                   displayMode: CARDINAL;
+                   xPos:        CARDINAL;
+                   yPos:        CARDINAL); TOOL 0B12H;
+
+PROCEDURE DrawPicture(picHandle: Handle; VAR destRect: Rect); TOOL 0BA04H;
+
+PROCEDURE DrawStringWidth(flags:      DrawStringFlagSet;
+                          stringRef:  Ref;
+                          width:      CARDINAL); TOOL 1512H;
+
+PROCEDURE GetSysIcon(flags:     IconFlag;
+                     value:     CARDINAL;
+                     auxValue:  LONGINT): IconRecPtr; TOOL 0F12H;
+
+PROCEDURE IBeamCursor; TOOL 1312H;
+
+PROCEDURE KillPicture(picHandle: Handle); TOOL 0BB04H;
+
+PROCEDURE OpenPicture(VAR picFrame: Rect): Handle; TOOL 0B704H;
+
+PROCEDURE PicComment(commentKind: CARDINAL;
+                     dataSize:    CARDINAL;
+                     datHandle:  Handle); TOOL 0B804H;
+
+PROCEDURE PixelMap2Rgn(VAR srcLocInfo:      LocInfo;
+                           bitsPerPixel:    CARDINAL;
+                           colorsToInclude: BITSET): Handle; TOOL 1012H;
+
+PROCEDURE RestoreColorTable(colorInfoHandle:  Handle;
+                            flags:            ColorTableFlagSet); TOOL 1712H;
+
+PROCEDURE SeedFill(VAR srcLocInfoPtr:   LocInfo;
+                   VAR srcRect:         Rect;
+                   VAR destLocInfoPtr:  LocInfo;
+                   VAR destRec:         Rect;
+                       seedH:           CARDINAL;
+                       seedV:           CARDINAL;
+                       resMode:         CARDINAL;
+                       thePattern:      PatternPtr;
+                       leakTblPtr:      ADDRESS); TOOL 0D12H;
+
+PROCEDURE SpecialRect(VAR theRect:    Rect;
+                          frameColor: CARDINAL;
+                          fillColor:  CARDINAL); TOOL 0C12H;
+
+PROCEDURE UseColorTable(tableNum: CARDINAL;
+                        table:    ColorTablePtr;
+                        flags:    ColorTableFlagSet): Handle; TOOL 1612H;
+
+PROCEDURE WaitCursor; TOOL 0A12H;
+
+PROCEDURE WhooshRect(    flags:     LONGINT;
+                     VAR smallRect: Rect;
+                     VAR bigRect:   Rect); TOOL 1412H;
+
+END QuickDrawII.

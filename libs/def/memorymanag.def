@@ -1,0 +1,104 @@
+(*$NoImp*)
+DEFINITION MODULE MemoryManager;
+
+FROM SYSTEM IMPORT
+  ADDRESS;
+
+TYPE
+  Attribute    = (attrBank, attrAddr, attrPage, attrNoSpec, attrNoCross,
+                   attrReserved5, attrReserved6, attrReserved7, attrPurge8,
+                   attrPurge9, attrReserved10, attrReserved11, attrReserved12,
+                   attrReserved13, attrFixed, attrLocked);
+  AttributeSet = SET OF Attribute;
+
+  OOMHeader    =
+    RECORD
+      reserved:   LONGINT;
+      version:    CARDINAL;        (* must be zero *)
+      signature:  CARDINAL;
+    END;
+  OOMHeaderPtr = POINTER TO OOMHeader;
+
+  Handle       = POINTER TO ADDRESS;
+
+  OOMProc      = PROCEDURE(LONGINT, CARDINAL): LONGINT;
+
+PROCEDURE MMBootInit; TOOL 0102H;  (* WARNING: NEVER make this call *)
+
+PROCEDURE MMStartUp(): CARDINAL; TOOL 0202H;
+
+PROCEDURE MMShutDown(userID: CARDINAL); TOOL 0302H;
+
+PROCEDURE MMVersion(): CARDINAL; TOOL 0402H;
+
+PROCEDURE MMReset; TOOL 0502H;     (* WARNING: NEVER make this call *)
+
+PROCEDURE MMStatus(): BOOLEAN; TOOL 0602H;
+
+PROCEDURE AddToOOMQueue(headerPtr: OOMHeaderPtr); TOOL 0C02H;
+
+PROCEDURE BlockMove(sourcPtr, destPtr: ADDRESS; count: LONGINT); TOOL 2B02H;
+
+PROCEDURE CheckHandle(theHandle: Handle); TOOL 1E02H;
+
+PROCEDURE CompactMem; TOOL 1F02H;
+
+PROCEDURE DisposeAll(userID: CARDINAL); TOOL 1102H;
+
+PROCEDURE DisposeHandle(theHandle: Handle); TOOL 1002H;
+
+PROCEDURE FindHandle(memLocation: ADDRESS): Handle; TOOL 1A02H;
+
+PROCEDURE FreeMem(): LONGINT; TOOL 1B02H;
+
+PROCEDURE GetHandleSize(theHandle: Handle): LONGINT; TOOL 1802H;
+
+PROCEDURE HandToHand(source, dest: Handle; count: LONGINT); TOOL 2A02H;
+
+PROCEDURE HandToPtr(source: Handle; dest: ADDRESS; count: LONGINT); TOOL 2902H;
+
+PROCEDURE HLock(theHandle: Handle); TOOL 2002H;
+
+PROCEDURE HLockAll(userID: CARDINAL); TOOL 2102H;
+
+PROCEDURE HUnLock(theHandle: Handle); TOOL 2202H;
+
+PROCEDURE HUnLockAll(userID: CARDINAL); TOOL 2302H;
+
+PROCEDURE MaxBlock(): LONGINT; TOOL 1C02H;
+
+PROCEDURE NewHandle(blockSize:      LONGINT;
+                    userID:         CARDINAL;
+                    memAttributes:  AttributeSet;
+                    memLocation:    ADDRESS): Handle; TOOL 0902H;
+
+PROCEDURE PtrToHand(source: ADDRESS; dest: Handle; count: LONGINT); TOOL 2802H;
+
+PROCEDURE PurgeAll(userID: CARDINAL); TOOL 1302H;
+
+PROCEDURE PurgeHandle(theHandle: Handle); TOOL 1202H;
+
+PROCEDURE RealFreeMem(): LONGINT; TOOL 2F02H;
+
+PROCEDURE ReAllocHandle(blockSize:      LONGINT;
+                        userID:         CARDINAL;
+                        memAttributes:  AttributeSet;
+                        memLocation:    ADDRESS;
+                        theHandle:      Handle); TOOL 0A02H;
+
+PROCEDURE RemoveFromOOMQueue(headerPtr: OOMHeaderPtr); TOOL 0D02H;
+
+PROCEDURE RestoreHandle(theHandle: Handle); TOOL 0B02H;
+
+PROCEDURE SetHandleID(newID:      CARDINAL;
+                      theHandle:  Handle): CARDINAL; TOOL 3002H;
+
+PROCEDURE SetHandleSize(newSize: LONGINT; theHandle: Handle); TOOL 1902H;
+
+PROCEDURE SetPurge(purgeLevel: CARDINAL; theHandle: Handle); TOOL 2402H;
+
+PROCEDURE SetPurgeAll(purgeLevel, userID: CARDINAL); TOOL 2502H;
+
+PROCEDURE TotalMem(): LONGINT; TOOL 1D02H;
+
+END MemoryManager.

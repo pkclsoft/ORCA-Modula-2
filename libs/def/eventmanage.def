@@ -1,0 +1,203 @@
+(*$NoImp*)
+DEFINITION MODULE EventManager;
+(*
+  Event Manager Interface File
+*)
+
+FROM QuickDrawII IMPORT
+  Point;
+FROM SYSTEM IMPORT
+  BYTE;
+
+TYPE
+  (*
+    Event masks are 16 bits wide.  As such the easiest way of manipulating 
+    them is to treat them as BITSETs.  This provides us with a very nice
+    way of testing for a bits presence in an event mask, and for formulating
+    such a mask using Modulas set manipulation facilities.
+  *)
+  EventBit = (ebReserved0, ebDown, ebUp, ebKeyDown, ebReserved4, ebAutoKey,
+              ebUpdate, ebReserved7, ebActivate, ebSwitch, ebDeskAcc, ebDriver,
+              ebApp1, ebApp2, ebApp3, ebApp4);
+  EventMask = SET OF EventBit;
+
+  (* 
+    Modifier flags
+  *)
+  EventModifierBit = (emActive, emChanging, emReserved2, emReserved3, 
+                      emReserved4, emReserved5, emBtn1Up, emBtn0Up, 
+                      emAppleDown, emShiftDown, emCapsDown, emOptionDown,
+                      emControlDown, emKeypad, emReserved14, emReserved15);
+  EventModifier = SET OF EventModifierBit;
+
+  EventRecord =
+    RECORD
+      what:       CARDINAL;
+      message:    LONGINT;
+      when:       LONGINT;
+      where:      Point;
+      modifiers:  EventModifier;
+    END;
+  EventRecordPtr = POINTER TO EventRecord;
+
+CONST
+  (* 
+    TaskMaster/Event Manager result codes
+  *)
+  nullEvt         =   0000H;
+  mouseDownEvt    =   0001H;
+  mouseUpEvt      =   0002H;
+  keyDownEvt      =   0003H;
+  autoKeyEvt      =   0005H;
+  updateEvt       =   0006H;
+  activateEvt     =   0008H;
+  switchEvt       =   0009H;
+  deskAccEvt      =   000AH;
+  driverEvt       =   000BH;
+  app1Evt         =   000CH;
+  app2Evt         =   000DH;
+  app3Evt         =   000EH;
+  app4Evt         =   000FH;
+
+  (*
+    Event masks
+  *)
+  mDownMask =     EventMask{ebDown};     (* mouse-down events     *)
+  mUpMask =       EventMask{ebUp};       (* mouse-up events       *)
+  keyDownMask =   EventMask{ebKeyDown};  (* key-down events       *)
+  autoKeyMask =   EventMask{ebAutoKey};  (* auto-key events       *)
+  updateMask =    EventMask{ebUpdate};   (* update events         *)
+  activateMask =  EventMask{ebActivate}; (* activate events       *)
+  switchMask =    EventMask{ebSwitch};   (* switch events         *)
+  deskAccMask =   EventMask{ebDeskAcc};  (* desk accessory events *)
+  driverMask =    EventMask{ebDriver};   (* device driver events  *)
+  app1Mask =      EventMask{ebApp1};     (* application-1 events  *)
+  app2Mask =      EventMask{ebApp2};     (* application-2 events  *)
+  app3Mask =      EventMask{ebApp3};     (* application-3 events  *)
+  app4Mask =      EventMask{ebApp4};     (* application-4 events  *)
+  everyEvent =    EventMask{ebReserved0, ebDown, ebUp, ebKeyDown, ebReserved4,
+                             ebAutoKey, ebUpdate, ebReserved7, ebActivate, 
+                             ebSwitch, ebDeskAcc, ebDriver, ebApp1, ebApp2, 
+                             ebApp3, ebApp4 }; (* all events       *)
+
+  (*
+    Journal codes
+  *)
+  jcTickCount     =   00;        (* TickCount call                    *)
+  jcGetMouse      =   01;        (* GetMouse call                     *)
+  jcButton        =   02;        (* Button call                       *)
+  jcEvent         =   04;        (* GetNextEvent and EventAvail calls *)
+  jcReadMouse     =   06;        (* ReadMouse call                    *)
+
+  (* 
+    Modifier flags
+  *)
+  activeFlag =  EventModifier{emActive};       (* window was activated        *)
+  changeFlag =  EventModifier{emChanging};     (* active window changed state *)
+  btn1State =   EventModifier{emBtn1Up};       (* button 1 was up             *)
+  btn0State =   EventModifier{emBtn0Up};       (* button 0 was up             *)
+  appleKey =    EventModifier{emAppleDown};    (* Apple key was down          *)
+  shiftKey =    EventModifier{emShiftDown};    (* Shift key was down          *)
+  capsLock =    EventModifier{emCapsDown};     (* Caps Lock key was down      *)
+  optionKey =   EventModifier{emOptionDown};   (* Option key was down         *)
+  controlKey =  EventModifier{emControlDown};  (* Control key was down        *)
+  keyPad =      EventModifier{emKeypad};       (* keypress was from key pad   *)
+
+TYPE
+  MouseStatus =
+    RECORD
+      statusMode: CARDINAL;
+      yLocation:  CARDINAL;
+      xLocation:  CARDINAL;
+    END;
+
+  JournalResult =
+    RECORD
+      CASE :CARDINAL OF
+        jcTickCount:  count:  LONGINT;
+      | jcGetMouse:   point:  Point;
+      | jcButton:     on:     BOOLEAN;
+      | jcEvent:      event:  EventRecord;
+      | jcReadMouse:  mouse:  MouseStatus;
+      END;
+    END;
+  JournalResultPtr = POINTER TO JournalResult;
+
+  JournalProc = PROCEDURE(INTEGER, CARDINAL, JournalResultPtr);
+
+PROCEDURE EMBootInit; TOOL 0106H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE EMStartUp(dPageAddr, queueSize, xMinClamp, xMaxClamp, yMinClamp,
+                    yMaxClamp, userID: CARDINAL); TOOL 0206H;
+
+PROCEDURE EMShutDown; TOOL 0306H;
+
+PROCEDURE EMVersion(): CARDINAL; TOOL 0406H;
+
+PROCEDURE EMReset; TOOL 0506H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE EMStatus(): BOOLEAN; TOOL 0606H;
+
+PROCEDURE Button(buttonNumber: CARDINAL): BOOLEAN; TOOL 0D06H;
+
+PROCEDURE DoWindows(): CARDINAL; TOOL 0906H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE EventAvail(    eventMask: EventMask;
+                     VAR eventPtr:  EventRecord): BOOLEAN; TOOL 0B06H;
+
+PROCEDURE FakeMouse(changedFlag:  CARDINAL; 
+                    modLatch:     BYTE;
+                    padding:      BYTE;
+                    xPosition:    CARDINAL;
+                    yPosition:    CARDINAL;
+                    buttonStatus: CARDINAL); TOOL 1906H;
+
+PROCEDURE FlushEvents(eventMask:  EventMask;
+                      stopMask:   EventMask): CARDINAL; TOOL 1506H;
+
+PROCEDURE GetCaretTime(): LONGINT; TOOL 1206H;
+
+PROCEDURE GetDblTime(): LONGINT; TOOL 1106H;
+
+PROCEDURE GetKeyTranslation(): CARDINAL; TOOL 1B06H;
+
+PROCEDURE GetMouse(VAR mouseLocPtr: Point); TOOL 0C06H;
+
+PROCEDURE GetNextEvent(    eventMask: EventMask;
+                       VAR theEvent:  EventRecord): BOOLEAN; TOOL 0A06H;
+
+PROCEDURE GetOSEvent(    eventMask: EventMask; 
+                     VAR theEvent:  EventRecord): BOOLEAN; TOOL 1606H;
+
+PROCEDURE OSEventAvail(    eventMask: EventMask;
+                       VAR theEvent:  EventRecord): BOOLEAN; TOOL 1706H;
+
+PROCEDURE PostEvent(eventCode: CARDINAL; eventMsg: LONGINT): CARDINAL; TOOL 1406H;
+
+PROCEDURE SetAutoKeyLimit(newLimit: CARDINAL); TOOL 1A06H;
+
+PROCEDURE SetEventMask(systemEventMask: EventMask); TOOL 1806H;
+
+PROCEDURE SetKeyTranslation(kTransID: CARDINAL); TOOL 1C06H;
+
+PROCEDURE SetSwitch; TOOL 1306H;
+(*
+  WARNING: only switcher-type applications should make this call
+*)
+
+PROCEDURE StillDown(buttonNumber: CARDINAL): BOOLEAN; TOOL 0E06H;
+
+PROCEDURE TickCount(): LONGINT; TOOL 1006H;
+
+PROCEDURE WaitMouseUp(buttonNumber: CARDINAL): BOOLEAN; TOOL 0F06H;
+
+END EventManager.

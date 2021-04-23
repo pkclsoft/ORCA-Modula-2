@@ -1,0 +1,51 @@
+DEFINITION MODULE Common;
+(*
+  This module contains a number of constants and types that may be used to bring
+  together a number of facilities within the toolbox.  It imports certain items
+  from the different toolsets to form a few useful types in order to make your
+  life easier.
+*)
+
+FROM MemoryManager IMPORT
+  Handle;
+FROM SYSTEM IMPORT
+  ADDRESS, BYTE;
+
+TYPE
+  (*
+    Ref is used wherever a toolbox call, template or record allows
+    you to specify an address, resourceid or handle.
+  *)
+  Ref = LONGINT;
+
+  String255 =
+    RECORD
+      length:   BYTE;
+      value:    ARRAY [0..255] OF CHAR;
+    END;
+  String255Ptr = POINTER TO String255;
+
+  DragFlagBit = (dfAllowHorz, dfAllowVert, dfRubberBand, dfCustomShape,
+                  dfMinMaxRect, dfSetDragRect, dfReserved6, dfReserved7,
+                  dfGrid8, dfGrid9, dfGrid10, dfGrid11, dfGrid12, dfGrid13,
+                  dfGrid14, dfGrid15);
+  DragFlag = SET OF DragFlagBit;
+
+  Fixed = LONGINT;
+
+  TextArray = ARRAY [0..299] OF CHAR;
+  TextArrayPtr = POINTER TO TextArray;
+
+  (*
+    A Scan Control Byte
+  *)
+  SCB = BITSET;
+
+PROCEDURE ConvStrToPStr(str: ARRAY OF CHAR; VAR PStr: String255);
+(*
+  OPERATION:
+    Converts a C String (null terminated string) to a pascal string with a 
+    length byte.
+*)
+
+END Common.

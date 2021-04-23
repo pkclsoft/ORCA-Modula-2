@@ -1,0 +1,581 @@
+(*$NoImp*)
+DEFINITION MODULE WindowManager;
+(*
+  Window Manager Interface File
+*)
+
+FROM Common IMPORT
+  DragFlag, Ref, String255Ptr;
+FROM EventManager IMPORT
+  EventMask, EventModifier, EventRecord;
+FROM MemoryManager IMPORT
+  Handle;
+FROM QuickDrawII IMPORT
+  Point, GrafPort, GrafPortPtr, Rect, RectPtr, Pattern;
+FROM SYSTEM IMPORT
+  ADDRESS, BYTE;
+
+CONST
+  (*
+    Axis parameters
+  *)
+  wNoConstraint   =   0000H;      (* no constraint on movement *)
+  wHAxisOnly      =   0001H;      (* horizontal axis only      *)
+  wVAxisOnly      =   0002H;      (* vertical axis only        *)
+
+  (*
+    Desktop commands
+  *)
+  fromDesk        =   00H;        (* subtract region from desktop           *)
+  toDesk          =   01H;        (* add region to desktop                  *)
+  getDesktop      =   02H;        (* get handle to desktop region           *)
+  setDesktop      =   03H;        (* set handle to desktop region           *)
+  getDeskPat      =   04H;        (* address of pattern or drawing rtn      *)
+  setDeskPat      =   05H;        (* change addr of pattern or drawing rtn  *)
+  getVisDesktop   =   06H;        (* get desktop rgn, minus visible windows *)
+  backgroundRgn   =   07H;        (* for drawing directly on desktop        *)
+
+  (*
+    SendBehind values
+  *)
+  toBottom        =   0FFFFFFFEH;         (* send window to bottom *)
+  topMost         =   0FFFFFFFFH; (* make window frontmost *)
+  bottomMost      =   0000H;      (* make window bottom    *)
+
+  (* 
+    varCode values when defining custom windows
+  *)
+  wDraw           =   00H;        (* draw window frame command *)
+  wHit            =   01H;        (* hit test command          *)
+  wCalcRgns       =   02H;        (* compute regions command   *)
+  wNew            =   03H;        (* initialization command    *)
+  wDispose        =   04H;        (* dispose command           *)
+
+  (*
+    Record sizes
+  *)
+  windSize        =   145H;       (* size of window record *)
+  wmTaskRecSize   =   16H;        (* size of task record   *)
+
+  wInDesk         =   0010H;      (* in desktop                            *)
+  wInMenuBar      =   0011H;      (* in system menu bar                    *)
+  wClickCalled    =   0012H;      (* system click called                   *)
+  wInContent      =   0013H;      (* in content region of window           *)
+  wInDrag         =   0014H;      (* in drag region of window              *)
+  wInGrow         =   0015H;      (* in grow box of active window          *)
+  wInGoAway       =   0016H;      (* in close box of active window         *)
+  wInZoom         =   0017H;      (* in zoom box of active window          *)
+  wInInfo         =   0018H;      (* in information bar of window          *)
+  wInSpecial      =   0019H;      (* item ID selected was 250-255          *)
+  wInDeskItem     =   001AH;      (* item ID selected was 1-249            *)
+  wInFrame        =   001BH;      (* in frame, but not on anything else    *)
+  wInactMenu      =   001CH;      (* inactive menu item selected           *)
+  wClosedNDA      =   001DH;      (* desk accessory closed                 *)
+  wCalledSysEdit  =   001EH;      (* inactive menu item selected           *)
+  wTrackZoom      =   001FH;      (* zoom box clicked, but not selected    *)
+  wHitFrame       =   0020H;      (* button down on frame, made active     *)
+  wInControl      =   0021H;      (* button or keystroke in control        *)
+  wInSysWindow    =   8000H;      (* high-order bit set for system windows *)
+
+TYPE
+  (* 
+    Task mask
+  *)
+  TaskMaskBit = (tmMenuKey, tmUpdate, tmFindW, tmMenuSel, tmOpenDA,
+                 tmSysClick, tmDragW, tmContent, tmClose, tmZoom, tmGrow,
+                 tmScroll, tmSpecial, tmCRedraw, tmInactive, tmInfo, 
+                 tmContentControls, tmControlKey, tmControlMenu, tmMultiClick,
+                 tmIdleEvents, tmNoGetNextEvent, tmReserved22, tmReserved23,
+                 tmReserved24, tmReserved25, tmReserved26, tmReserved27,
+                 tmReserved28, tmReserved29, tmReserved30, tmReserved31);
+  TaskMask = SET OF TaskMaskBit;
+
+  (*
+    wFrame values
+  *)
+  FrameBit = (fHilited, fZoomed, fAllocated, fCtlTie, fInfo, fVis, fQContent, 
+              fMove, fZoom, fFlex, fGrow, fBScroll, fRScroll, fAlert, fClose, 
+              fTitle);
+  FrameType = SET OF FrameBit;
+
+  TaskRec =
+    RECORD
+      wmWhat:           CARDINAL;
+      wmMessage:        LONGINT;
+      wmWhen:           LONGINT;
+      wmWhere:          Point;
+      wmModifiers:      EventModifier;
+      wmTaskData:       GrafPortPtr;
+      wmTaskMask:       TaskMask;
+      wmLastCLickTick:  LONGINT;
+      wmClickCount:     CARDINAL;
+      wmTaskData2:      Handle;
+      wmTaskData3:      LONGINT;
+      wmTaskData4:      LONGINT;
+      wmLastClickPt:    Point;
+    END;
+  TaskRecPtr = POINTER TO TaskRec;
+
+  (*
+    Document and alert window color table
+  *)
+  WindowColorTable =
+    RECORD
+      frameColor: CARDINAL;
+      titleColor: CARDINAL;
+      tBarColor:  CARDINAL;
+      growColor:  CARDINAL;
+      infoColor:  CARDINAL;
+    END;
+  WindowColorTablePtr = POINTER TO WindowColorTable;
+
+  ContentDrawProc = PROCEDURE;
+  DrawInfoBarProc = PROCEDURE(RectPtr, LONGINT, GrafPortPtr);
+  FrameDefProc = PROCEDURE(CARDINAL, GrafPortPtr, LONGINT): LONGINT;
+  EventHookProc = PROCEDURE(TaskRecPtr);
+  BeepProc = PROCEDURE;
+
+  (*
+    Window record
+  *)
+  WindowRecordPtr = POINTER TO WindowRecord;
+  WindowRecord =
+    RECORD
+      wNext:       WindowRecordPtr;
+      wPort:       GrafPort;
+      wDefProc:    ADDRESS;
+      wRefCon:     LONGINT;
+      wContDraw:   ContentDrawProc;
+      wReserved:   LONGINT;
+      wStructRgn:  Handle;
+      wContRgn:    Handle;
+      wUpdateRgn:  Handle;
+      wCtls:       Handle;
+      wFrameCtls:  Handle;
+      wFrame:      FrameType;
+  (* Other fields may be added here, as defined by window's defProc. *)
+    END;
+
+  ParamTableRef =
+    RECORD
+      p1Length:       CARDINAL;
+      p1Frame:        CARDINAL;
+      p1Title:        LONGINT;
+      p1RefCon:       LONGINT;
+      p1Zoom:         Rect;
+      p1Color:        LONGINT;
+      p1YOrigin:      CARDINAL;
+      p1XOrigin:      CARDINAL;
+      p1DataH:        CARDINAL;
+      p1DataW:        CARDINAL;
+      p1MaxH:         CARDINAL;
+      p1MaxW:         CARDINAL;
+      p1VerScroll:    CARDINAL;
+      p1HorScroll:    CARDINAL;
+      p1VerPage:      CARDINAL;
+      p1HorPage:      CARDINAL;
+      p1InfoText:     LONGINT;
+      p1InfoHeight:   CARDINAL;
+      p1DefProc:      ADDRESS;
+      p1InfoDraw:     ADDRESS;
+      p1ContentDraw:  ADDRESS;
+      p1Position:     Rect;
+      p1Plane:        LONGINT;
+      p1ControlList:  LONGINT;
+      p1InVerb:       CARDINAL;
+    END;
+
+  (* original Window parameter list *)
+  ParamList =
+    RECORD
+      paramLength:   CARDINAL;
+      wFrameBits:    CARDINAL;
+      wTitle:        String255Ptr;
+      wRefCon:       LONGINT;
+      wZoom:         Rect;
+      wColor:        WindowColorTablePtr;
+      wYOrigin:      CARDINAL;
+      wXOrigin:      CARDINAL;
+      wDataH:        CARDINAL;
+      wDataW:        CARDINAL;
+      wMaxH:         CARDINAL;
+      wMaxW:         CARDINAL;
+      wScrollVer:    CARDINAL;
+      wScrollHor:    CARDINAL;
+      wPageVer:      CARDINAL;
+      wPageHor:      CARDINAL;
+      wInfoRefCon:   LONGINT;
+      wInfoHeight:   CARDINAL;
+      wFrameDefProc: FrameDefProc;
+      wInfoDefProc:  DrawInfoBarProc;
+      wContDefProc:  ContentDrawProc;
+      wPosition:     Rect;
+      wPlane:        GrafPortPtr;
+      wStorage:      WindowRecordPtr; (* address of memory for window record *)
+    END;
+  ParamListPtr = POINTER TO ParamList;
+
+  DeskMessage =
+    RECORD
+      reserved:  LONGINT;
+      messType:  CARDINAL;         (* must be 2 *)
+      drawType:  CARDINAL;         (* 0 = pattern; 1 = picture *)
+   (* drawData = 32 bytes of pattern or 32,000 bytes of picture data *)
+      drawData:  ARRAY [1..32] OF BYTE;
+    END;
+
+  ModalFlagBit = (mwNoScrapForLE, mwMenuSelect, mwMenuKey, mwIBeam, mwDeskAcc,
+                  mwWantActivate, mwReserved6, mwReserved7, mwReserved8,
+                  mwReserved9, mwReserved10, mwReserved11, mwReserved12,
+                  mwReserved13, mwUpdateAll, mwMoveable);
+  ModalFlag = SET OF ModalFlagBit;
+
+  AuxWindowInfo =
+    RECORD
+      size:         CARDINAL;
+      bankReg:      CARDINAL;
+      dirPage:      CARDINAL;
+      resourceApp:  CARDINAL;
+      oldUpdateRgn: Handle;
+      oldPort:      GrafPortPtr;
+      windLayer:    LONGINT;
+      minVertSize:  CARDINAL;
+      minHorzSize:  CARDINAL;
+      NDAStrPtr:    ADDRESS;
+    END;
+  AuxWindowInfoPtr = POINTER TO AuxWindowInfo;
+
+  HDIFlagBit = (hdiMarkOffline, hdiReserved1, hdiReserved2, hdiReserved3,
+                hdiReserved4, hdiReserved5, hdiReserved6, hdiReserved7,
+                hdiUnreadable, hdiCheckTapeDrives, hdiDupDisk, hdiNoDelay,
+                hdiReportEjects, hdiUpdate, hdiHandle, hdiScan);
+  HDIFlag = SET OF HDIFlagBit;
+
+  HandlePtr = POINTER TO Handle;
+
+  (*
+    UpdateWindow flag values
+  *)
+  UpdateWindowBits = (uw0, uw1, uw2, uw3, uw4, uw5, uw6, uw7, uw8, uw9, uw10,
+                      uw11, uw12, uw13, uwGSOSnotAvail, uwBackground);
+  UpdateWindowFlag = SET OF UpdateWindowBits;
+
+PROCEDURE WindBootInit; TOOL 010EH;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE WindStartup(userID: CARDINAL); TOOL 020EH;
+
+PROCEDURE WindShutDown; TOOL 030EH;
+
+PROCEDURE WindVersion(): CARDINAL; TOOL 040EH;
+
+PROCEDURE WindReset; TOOL 050EH;      (* WARNING: an application should
+                                                       NEVER make this call *)
+
+PROCEDURE WindStatus(): BOOLEAN; TOOL 060EH;
+
+PROCEDURE AlertWindow(alertFlags:   CARDINAL;
+                      subStrPtr:    ADDRESS;
+                      alertStrRef:  Ref): CARDINAL; TOOL 590EH;
+
+PROCEDURE BeginUpdate(theWindow: GrafPortPtr); TOOL 1E0EH;
+
+PROCEDURE BringToFront(theWindow: GrafPortPtr); TOOL 240EH;
+
+PROCEDURE CheckUpdate(VAR theEvent: EventRecord): BOOLEAN; TOOL 0A0EH;
+
+PROCEDURE CloseWindow(theWindow: GrafPortPtr); TOOL 0B0EH;
+
+PROCEDURE CompileText(subType:        CARDINAL;
+                      subStringsPtr:  ADDRESS;
+                      srcStringsPtr:  ADDRESS;
+                      srcSize:        CARDINAL): Handle; TOOL 600EH;
+      
+PROCEDURE Desktop(deskTopOp: CARDINAL; dtParam: LONGINT): LONGINT; TOOL 0C0EH;
+
+PROCEDURE DoModalWindow(eventPtr:   TaskRecPtr;
+                        updateProc: ContentDrawProc;
+                        eventHook:  EventHookProc;
+                        beepProc:   BeepProc;
+                        flags:      ModalFlag): LONGINT; TOOL 640EH;
+
+PROCEDURE DragWindow(    grid:        CARDINAL;
+                         startX:      CARDINAL;
+                         startY:      CARDINAL;
+                         grace:       CARDINAL;
+                     VAR boundsRect:  Rect;
+                         theWindow:   GrafPortPtr); TOOL 1A0EH;
+
+PROCEDURE DrawInfoBar(theWindow: GrafPortPtr); TOOL 550EH;
+
+PROCEDURE EndFrameDrawing; TOOL 5B0EH;
+
+PROCEDURE EndInfoDrawing; TOOL 510EH;
+
+PROCEDURE EndUpdate(theWindow: GrafPortPtr); TOOL 1F0EH;
+
+PROCEDURE ErrorWindow(subType:      CARDINAL;
+                      subStringPtr: ADDRESS;
+                      errNum:       CARDINAL): CARDINAL; TOOL 620EH;
+      
+PROCEDURE FindCursorCtl(ctlHandlePtr: HandlePtr;
+                        xLoc:         CARDINAL;
+                        yLoc:         CARDINAL;
+                        windPtr:      GrafPortPtr): CARDINAL; TOOL 690EH;
+
+PROCEDURE FindWindow(whichWindow: GrafPortPtr;
+                     pointX:      CARDINAL;
+                     pointY:      CARDINAL): CARDINAL; TOOL 170EH;
+
+PROCEDURE FrontWindow(): GrafPortPtr; TOOL 150EH;
+
+PROCEDURE GetAuxWindowInfo(windPtr: GrafPortPtr): AuxWindowInfoPtr; TOOL 630EH;
+
+PROCEDURE GetContentDraw(theWindow: GrafPortPtr): ContentDrawProc; TOOL 480EH;
+
+PROCEDURE GetContentOrigin(theWindow: GrafPortPtr): Point; TOOL 3E0EH;
+
+PROCEDURE GetContentRgn(theWindow: GrafPortPtr): Handle; TOOL 2F0EH;
+
+PROCEDURE GetDataSize (theWindow: GrafPortPtr): LONGINT; TOOL 400EH;
+(*
+  GetDataSize returns 2 words: loWord = height
+                               hiWord = width
+*)
+
+PROCEDURE GetDefProc(theWindow: GrafPortPtr): FrameDefProc; TOOL 310EH;
+
+PROCEDURE GetFirstWindow(): GrafPortPtr; TOOL 520EH;
+
+PROCEDURE GetFrameColor(VAR newColor:   WindowColorTable;
+                            theWindow:  GrafPortPtr); TOOL 100EH;
+
+PROCEDURE GetInfoDraw(theWindow: GrafPortPtr): DrawInfoBarProc; TOOL 4A0EH;
+
+PROCEDURE GetInfoRefCon(theWindow: GrafPortPtr): LONGINT; TOOL 350EH;
+
+PROCEDURE GetMaxGrow(theWindow: GrafPortPtr): LONGINT; TOOL 420EH;
+(*
+  GetMaxGrow returns 2 words: loWord = maxHeight
+                              hiWord = maxWidth
+*)
+
+PROCEDURE GetNextWindow(theWindow: GrafPortPtr): GrafPortPtr; TOOL 2A0EH;
+
+PROCEDURE GetPage(theWindow: GrafPortPtr): LONGINT; TOOL 460EH;
+(*
+  GetPage returns 2 words: loWord = vertical amt
+                           hiWord = horizontal amt
+*)
+
+PROCEDURE GetRectInfo(VAR infoRect: Rect; theWindow: GrafPortPtr); TOOL 4F0EH;
+
+PROCEDURE GetScroll(theWindow: GrafPortPtr): LONGINT; TOOL 440EH;
+(*
+  GetScroll returns 2 words: loWord = vertical amt
+                             hiWord = horizontal amt
+*)
+
+PROCEDURE GetStructRgn(theWindow: GrafPortPtr): Handle; TOOL 2E0EH;
+
+PROCEDURE GetSysWFlag(theWindow: GrafPortPtr): BOOLEAN; TOOL 4C0EH;
+
+PROCEDURE GetUpdateRgn(theWindow: GrafPortPtr): Handle; TOOL 300EH;
+
+PROCEDURE GetWControls(theWindow: GrafPortPtr): Handle; TOOL 330EH;
+
+PROCEDURE GetWFrame(theWindow: GrafPortPtr): FrameType; TOOL 2C0EH;
+
+PROCEDURE GetWindowMgrGlobals(): ADDRESS; TOOL 580EH;
+
+PROCEDURE GetWKind(theWindow: GrafPortPtr): BITSET; TOOL 2B0EH;
+
+PROCEDURE GetWMgrPort(): GrafPortPtr; TOOL 200EH;
+
+PROCEDURE GetWRefCon(theWindow: GrafPortPtr): LONGINT; TOOL 290EH;
+
+PROCEDURE GetWTitle(theWindow: GrafPortPtr): String255Ptr; TOOL 0E0EH;
+
+PROCEDURE GetZoomRect(theWindow: GrafPortPtr): RectPtr; TOOL 370EH;
+
+PROCEDURE GrowWindow(minWidth:  CARDINAL;
+                     minHeight: CARDINAL;
+                     startX:    CARDINAL;
+                     startY:    CARDINAL;
+                     theWindow: GrafPortPtr): LONGINT; TOOL 1B0EH;
+(*
+  GrowWindow returns 2 words: loWord = new height
+                              hiWord = new width
+*)
+
+PROCEDURE HandleDiskInsert(flags:   HDIFlag;
+                           devNum:  CARDINAL): LONGINT; TOOL 6B0EH;
+(*
+  HandleDiskInsert returns 2 words: loword = resultDevNum
+                                    hiword = resultingFlags
+*)
+
+PROCEDURE HideWindow(theWindow: GrafPortPtr); TOOL 120EH;
+
+PROCEDURE HiliteWindow(fHiliteFlag: BOOLEAN; theWindow: GrafPortPtr); TOOL 220EH;
+
+PROCEDURE InvalRect(VAR badRect: Rect); TOOL 3A0EH;
+
+PROCEDURE InvalRgn(badRgn: Handle); TOOL 3B0EH;
+
+PROCEDURE MoveWindow(newX, newY: CARDINAL; theWindow: GrafPortPtr); TOOL 190EH;
+
+PROCEDURE MWGetCtlPart(): CARDINAL; TOOL 650EH;
+
+PROCEDURE MWSetMenuProc(newMenuProc: ADDRESS): ADDRESS; TOOL 660EH;
+
+PROCEDURE MWSetUpEditMenu; TOOL 680EH;
+
+PROCEDURE MWStdDrawProc; TOOL 670EH;
+
+PROCEDURE NewWindow(paramListPtr: ParamListPtr): GrafPortPtr; TOOL 090EH;
+
+PROCEDURE NewWindow2(titlePtr:        String255Ptr;
+                     refCon:          LONGINT;
+                     contentDrawPtr:  ContentDrawProc;
+                     defProcPtr:      FrameDefProc;
+                     paramTableDesc:  CARDINAL;
+                     paramTableRef:   Ref;
+                     resourceType:    CARDINAL): GrafPortPtr; TOOL 610EH;
+
+PROCEDURE PinRect(    xPoint:  CARDINAL;
+                      yPoint:  CARDINAL;
+                  VAR theRect: Rect): Point; TOOL 210EH;
+
+PROCEDURE RefreshDesktop(redrawRect: RectPtr); TOOL 390EH;
+
+PROCEDURE ResizeInfoBar(flags:    CARDINAL;
+                        newSize:  CARDINAL;
+                        windPtr:  GrafPortPtr); TOOL 6A0EH;
+
+PROCEDURE ResizeWindow(    hiddenFlag:  BOOLEAN;
+                       VAR theRect:     Rect;
+                           theWindow:   GrafPortPtr); TOOL 5C0EH;
+
+PROCEDURE SelectWindow(theWindow: GrafPortPtr); TOOL 110EH;
+
+PROCEDURE SendBehind(behindWindow, theWindow: GrafPortPtr); TOOL 140EH;
+
+PROCEDURE SetContentDraw(contDraw:  ContentDrawProc;
+                         theWindow: GrafPortPtr); TOOL 490EH;
+
+PROCEDURE SetContentOrigin(xOrigin:   CARDINAL;
+                           yOrigin:   CARDINAL;
+                           theWindow: GrafPortPtr); TOOL 3F0EH;
+
+PROCEDURE SetContentOrigin2(scrollFlag: CARDINAL;
+                            xOrigin:    CARDINAL;
+                            yOrigin:    CARDINAL;
+                            theWindow:  GrafPortPtr); TOOL 570EH;
+
+PROCEDURE SetDataSize(dataWidth:  CARDINAL;
+                      dataHeight: CARDINAL;
+                      theWindow:  GrafPortPtr); TOOL 410EH;
+
+PROCEDURE SetDefProc(wDefProc: FrameDefProc; theWindow: GrafPortPtr); TOOL 320EH;
+
+PROCEDURE SetFrameColor(newColor:   WindowColorTablePtr;
+                        theWindow:  GrafPortPtr); TOOL 0F0EH;
+
+PROCEDURE SetInfoDraw(infoDraw:   DrawInfoBarProc;
+                      theWindow:  GrafPortPtr); TOOL 160EH;
+
+PROCEDURE SetInfoRefCon(infoRefCon: LONGINT; theWindow: GrafPortPtr); TOOL 360EH;
+
+PROCEDURE SetMaxGrow(maxWidth:  CARDINAL;
+                     maxHeight: CARDINAL;
+                     theWindow: GrafPortPtr); TOOL 430EH;
+
+PROCEDURE SetOriginMask(originMask: CARDINAL; theWindow: GrafPortPtr); TOOL 340EH;
+
+PROCEDURE SetPage(hPage, vPage: CARDINAL; theWindow: GrafPortPtr); TOOL 470EH;
+
+PROCEDURE SetScroll(hScroll:    CARDINAL;
+                    vScroll:    CARDINAL;
+                    theWindow:  GrafPortPtr); TOOL 450EH;
+
+PROCEDURE SetSysWindow(theWindow: GrafPortPtr); TOOL 4B0EH;
+
+PROCEDURE SetWFrame(wFrame: CARDINAL; theWindow: GrafPortPtr); TOOL 2D0EH;
+
+PROCEDURE SetWindowIcons(newFontHandle: Handle): Handle; TOOL 4E0EH;
+
+PROCEDURE SetWRefCon(wRefCon: LONGINT; theWindow: GrafPortPtr); TOOL 280EH;
+
+PROCEDURE SetWTitle(title: String255Ptr; theWindow: GrafPortPtr); TOOL 0D0EH;
+
+PROCEDURE SetZoomRect(VAR wZoomSize: Rect; theWindow: GrafPortPtr); TOOL 380EH;
+
+PROCEDURE ShowHide(showFlag: BOOLEAN; theWindow: GrafPortPtr); TOOL 230EH;
+
+PROCEDURE ShowWindow(theWindow: GrafPortPtr); TOOL 130EH;
+
+PROCEDURE SizeWindow(newWidth:  CARDINAL;
+                     newHeight: CARDINAL;
+                     theWindow: GrafPortPtr); TOOL 1C0EH;
+
+PROCEDURE StartDrawing(theWindow: GrafPortPtr); TOOL 4D0EH;
+
+PROCEDURE StartFrameDrawing(theWindow: GrafPortPtr); TOOL 5A0EH;
+
+PROCEDURE StartInfoDrawing(VAR infoRect:  Rect;
+                               theWindow: GrafPortPtr); TOOL 500EH;
+
+PROCEDURE TaskMaster(    eventMask:   EventMask;
+                     VAR theTaskRec:  TaskRec): CARDINAL; TOOL 1D0EH;
+
+PROCEDURE TaskMasterContent; TOOL 5D0EH;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE TaskMasterDA(    eventMask:   EventMask;
+                       VAR taskRecPtr:  EventRecord): CARDINAL; TOOL 5F0EH;
+
+PROCEDURE TaskMasterKey; TOOL 5E0EH;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE TrackGoAway(startX:     CARDINAL;
+                      startY:     CARDINAL;
+                      theWindow:  GrafPortPtr): BOOLEAN; TOOL 180EH;
+
+PROCEDURE TrackZoom(startX:     CARDINAL;
+                    startY:     CARDINAL;
+                    theWindow:  GrafPortPtr): BOOLEAN; TOOL 260EH;
+
+PROCEDURE UpdateWindow(flags:     UpdateWindowFlag;
+                       theWindow: GrafPortPtr); TOOL 6C0EH;
+
+PROCEDURE ValidRect(VAR goodRect: Rect); TOOL 3C0EH;
+
+PROCEDURE ValidRgn(goodRgn: Handle); TOOL 3D0EH;
+
+PROCEDURE WindDragRect(    actionProc:      ADDRESS;
+                       VAR dragPatternPtr:  Pattern;
+                           startX:          CARDINAL;
+                           startY:          CARDINAL;
+                       VAR dragRect:        Rect;
+                       VAR limitRect:       Rect;
+                       VAR slopRect:        Rect;
+                           dragFlag:        DragFlag): LONGINT; TOOL 530EH;
+(*
+  WindDragRect returns 2 words:  loWord = change in Y
+                                 hiWord = change in X
+*)
+
+PROCEDURE WindNewRes; TOOL 250EH;
+
+PROCEDURE WindowGlobal(windowGlobalMask: CARDINAL): CARDINAL; TOOL 560EH;
+
+PROCEDURE ZoomWindow(theWindow: GrafPortPtr); TOOL 270EH;
+
+END WindowManager.

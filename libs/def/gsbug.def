@@ -1,0 +1,10 @@
+(*$NoImp*)
+DEFINITION MODULE GSBug;
+
+FROM Common IMPORT String255;
+
+PROCEDURE DebugStr(VAR theString: String255); TOOL 09FFH;
+
+PROCEDURE SetMileStone(VAR theString: String255); TOOL 0AFFH;
+
+END GSBug.

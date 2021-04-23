@@ -1,0 +1,471 @@
+DEFINITION MODULE Lists;
+(*
+  Author  : John Cameron
+
+  Handles dynamic lists of data.
+*)
+
+FROM FileSystem IMPORT File;
+FROM SYSTEM IMPORT ADDRESS;
+
+TYPE
+  aList;
+  aListError = (leOK,               (*List looks OK*)
+                leLastNECount,      (*Position of last item <> count*)
+                leFirstNotFirst,    (*Position of first item <> 1*)
+                leLastNotLast,      (*Items appear in list after last*)
+                leCurrentNEPosition,(*Position is wrong*) 
+                leNul,              (*NIL list pointer*)
+                leInvalidList);     (*List points to bad list header*)
+
+  aListErrorSet = SET OF aListError;
+  aListLocation = POINTER TO aListEntry;
+  aLessProc = PROCEDURE(ADDRESS, ADDRESS): BOOLEAN;
+
+  aListDumpProc = PROCEDURE(VAR  (*DumpFile:*) File,
+                                 (*DataPtr:*)  ADDRESS,
+                            VAR  (*OK:*)       BOOLEAN );
+
+  aListReadProc = PROCEDURE(VAR  (*DumpFile:*) File,
+                            VAR  (*DataPtr:*)  ADDRESS,
+                            VAR  (*OK:*)       BOOLEAN );
+  aListStatus = 
+    RECORD
+      first, last: CARDINAL;         (*First should = 1*)
+      count: CARDINAL;               (*This should always equal last*)
+      current: CARDINAL;
+      position: CARDINAL;            (*If non zero this should = current*)
+      validate: ARRAY[0..1] OF CHAR; (*Should = 'OK'*)
+      error: aListError;
+    END;
+
+  (*
+    Should never have to use this type outside this module directly.
+    Included because aListLocation definition uses it.
+
+    Did not make aListLocation opaque because I want user to be able to
+    compare variables of that type with NIL. Opaque types are incompatible
+    with NIL even though they are always ADDRESSes
+  *)
+  aListEntry =
+    RECORD
+      forward, back: aListLocation;
+      data: ADDRESS;
+    END;
+
+VAR
+  (*
+    Initialized TRUE. Enables extended list checking at the expense of some 
+    CPU
+  *)
+  ListChecking: BOOLEAN;
+
+PROCEDURE DumpList( VAR DumpFile: File;
+                        List:     aList;
+                        DumpProc: aListDumpProc;
+                    VAR OK:       BOOLEAN );
+(*
+  OPERATION:
+    Dumps the contents of the given list to the DumpFile in a standard
+    format which can be read by ReadList - see below.
+    The contents of individual list entries is dumped by the user supplied
+    procedure, DumpProc
+*)
+
+PROCEDURE GetListStatus( List: aList; VAR ListStatus: aListStatus );
+(*
+  OPERATION:
+    Gets pointer independent state of list. 
+    ie Contains no ListLocations - computes positions instead. 
+    Calling this procedure triggers some error checking. The results of the
+    checks are returned in the ListStatus.error field.
+  NOTE:
+    GetListStatus will accept a Nul List pointer as well as pointers to
+    junk (unless the pointer is outside of memory or causes some other
+    kind of memory access violation). In such cases, it will set 
+    ListStatus.error accordingly and return.
+
+    Preserves list positioning.
+*)
+
+PROCEDURE LDelete( List: aList; DataBytes: CARDINAL );
+(*
+  OPERATION
+    Deletes the current list entry.
+    DataBytes gives the size of the list entry data records.
+    The current list location is advanced to the following entry. If the
+    last entry is deleted, LEndOFList will return TRUE and the current 
+    list location is set to undefined.
+  NOTE
+    It is important that the size is correct (ie corresponds to actual size
+    of the data).
+    The code cannot check this, so if you screw up, you pay the consequences.
+  WARNING
+    Be careful about deleting list entries that contain pointers to
+    other dynamic data. In these cases, you should return the dynamic data
+    to the free pool (using DISPOSE or DEALLOCATE) before deleting the list
+    entry.
+*)
+
+PROCEDURE LDeleteAll( List: aList; DataBytes: CARDINAL );
+(*
+  OPERATION
+    Deletes the all entries in the given list.
+    DataBytes gives the size of the list entry data records.
+    LEndOFList will return TRUE and the current list location is 
+    set to undefined.
+  NOTE
+    It is important that the size is correct (ie corresponds to actual size
+    of the data).
+    The code cannot check this, so if you screw up, you pay the consequences.
+  WARNING
+    Be careful about deleting list entries that contain pointers to
+    other dynamic data. In these cases, you should return the dynamic data
+    to the free pool (using DISPOSE or DEALLOCATE) before deleting the list
+    entry.
+*)
+
+PROCEDURE LEndOfList( List: aList ): BOOLEAN;
+(*
+  OPERATION
+    Returns TRUE if the current list location is at the end of the list.
+  NOTE
+    When we are positioned at the end of a list, the current list location 
+    will be undefined.
+    The end of a list can be reached either by going past the last entry in
+    the list, or by backing up before the first entry.
+    For example, LEndOfList may be set TRUE by repeated LGetNext's or by
+    repeated LGetPrevious's.
+*)
+
+PROCEDURE LFindLocation(List: aList; DataPtr: ADDRESS; VAR Found: BOOLEAN);
+(*
+  OPERATION:
+    Given the data address, find the appropriate list entry.
+
+    NOTE:
+      If the specified data is not found, then Found is set to FALSE, and the
+      current position is left unchanged.
+
+      If it is found, then the current position is set to be that of the 
+      located data, and Found is set to TRUE.
+*)
+
+PROCEDURE LGet( List: aList; ListPtr: aListLocation; VAR DataPtr: ADDRESS );
+(*
+  OPERATION
+    Retrieves data pointer to data at the given list location
+
+    The list location is updated to point to this new entry.
+
+  NOTE
+    ListPtr better be a valid list location, because no checks are made.
+*)
+
+PROCEDURE LGetCurrent( List: aList; VAR DataPtr: ADDRESS );
+(*
+  OPERATION
+    Retrieves data pointer of current entry in List.
+
+    If the list is at end of list, the DataPtr returns NIL;
+*)
+
+PROCEDURE LGetFirst( List: aList; VAR DataPtr: ADDRESS );
+(*
+  OPERATION
+    Retrieves data pointer of first entry in List.
+
+    The list location is updated to point to this new entry.
+
+    If no such list entry exists, the DataPtr returns NIL;
+*)
+
+PROCEDURE LGetLast( List: aList; VAR DataPtr: ADDRESS );
+(*
+  OPERATION
+    Retrieves data pointer of last entry in List.
+
+    The list location is updated to point to this new entry.
+
+    If no such list entry exists, the DataPtr returns NIL;
+*)
+
+PROCEDURE LGetLocation( List: aList; VAR Current: aListLocation );
+(*
+  OPERATION
+    Retrieves current location in list (sort of like a record number).
+
+    If the list is currently positioned at End of List (LEndOfList returns
+    TRUE), Current returns a special undefined value (NIL).
+*)
+
+PROCEDURE LGetNext( List: aList; VAR DataPtr: ADDRESS );
+(*
+  OPERATION
+    Advances current list location and retrieves the corresponding
+    data pointer.
+
+    If the current list location is already at the end of the list,
+    the list location becomes undefined, and DataPtr returns NIL.
+*)
+
+PROCEDURE LGetNth( List: aList; N: CARDINAL; VAR DataPtr: ADDRESS );
+(*
+  OPERATION
+    Retrieves data pointer to data at the N'th list entry (origin 1).
+
+    The list location is updated to point to this new entry.
+
+    If no such entry exists, the list is positioned at End of List and
+    DataPtr returns NIL.
+
+  NOTE
+    Lists are by nature sequential data structures, so that random accesses
+    to particular entries may not be very efficient. However, this procedure
+    will find the N'th entry quite efficiently in the following cases:
+            1) if the N'th entry is near the start of the list
+            2) if the N'th entry is near the end of the list
+            3) if the N'th entry is near the current list location
+    In particular, case 3 makes it quite practical to scan a list sequentially
+    using successive calls to LGetNth (instead of LGetNext or LGetPrevious).
+
+    If you need to access the list randomly by entry number, with more 
+    efficiency, you can always construct your own index to the list.
+    Use your index to find a list location from an entry number and then
+    use LGet to get that specific entry.
+    
+*)
+
+PROCEDURE LGetPosition( List: aList; VAR N: CARDINAL );
+(*
+  OPERATION
+    Retrieves the position of the current entry within the list.
+
+    If the list is currently positioned at End of List (LEndOfList returns
+    TRUE), N returns 0.
+
+  NOTE
+    This will usually be an efficient operation because I try to keep track
+    of current position at all times. However, some operations lose the
+    current position. In these cases, I have to scan the list in order to
+    find out my current position, which, of course, is not particularly
+    efficient for long lists.
+    I lose current position any time we are at end of list.
+    Also the following procedures always lose current position:
+           LGet
+           LGotoLocation
+           LSort
+    After losing the current position I will get back on the tracks if you 
+    call any of the following procedures:
+           LGetFirst, LGetLast, LInsertFirst, LInsertLast, LGetNth, 
+           LGetPosition, LMerge, LMoveFirst, LMoveLast.
+
+*)
+
+PROCEDURE LGetPrevious( List: aList; VAR DataPtr: ADDRESS );
+(*
+  OPERATION
+    Backs up current list location and retrieves the corresponding
+    data pointer.
+
+    If the current list location is already at the beginning of the list,
+    the list location becomes undefined, and DataPtr returns NIL.
+*)
+
+PROCEDURE LGotoLocation( List: aList; Location: aListLocation );
+(*
+  OPERATION:
+    Positions the list at the specified list location.
+  NOTE:
+    Location may be NIL, in which case list is placed at end-of-list.
+
+    Useful for restoring
+*)
+
+PROCEDURE LInsertAfter( List: aList; DataPtr: ADDRESS; VAR OK: BOOLEAN );
+(* 
+  OPERATION
+    Inserts the data pointed to by DataPtr into the List AFTER the current
+    list location.
+
+    If current list location is undefined, the entry is moved to the 
+    end of the list.
+
+    If the list is empty, this entry becomes the first in the list.
+
+    The list location is updated to point to this new entry.
+
+    OK is FALSE if not enough memory to add new entry. You should release
+    some memory and try again.
+*)
+
+PROCEDURE LInsertBefore( List: aList; DataPtr: ADDRESS; VAR OK: BOOLEAN );
+(* 
+  OPERATION
+    Inserts the data pointed to by DataPtr into the List BEFORE the current
+    list location.
+
+    If current list location is undefined, the entry is moved to the 
+    front of the list.
+
+    If the list is empty, this entry becomes the first in the list.
+
+    The list location is updated to point to this new entry.
+
+    OK is FALSE if not enough memory to add new entry. You should release
+    some memory and try again.
+*)
+
+PROCEDURE LInsertFirst( List: aList; DataPtr: ADDRESS; VAR OK: BOOLEAN );
+(* 
+  OPERATION
+    Inserts the data pointed to by DataPtr at the front of the List.
+
+    The list location is updated to point to this new entry.
+
+    OK is FALSE if not enough memory to add new entry. You should release
+    some memory and try again.
+*)
+
+PROCEDURE LInsertLast( List: aList; DataPtr: ADDRESS; VAR OK: BOOLEAN );
+(* 
+  OPERATION
+    Appends the data pointed to by DataPtr to the end of the List.
+
+    The list location is updated to point to this new entry.
+
+    OK is FALSE if not enough memory to add new entry. You should release
+    some memory and try again.
+*)
+
+PROCEDURE LLength( List: aList ): CARDINAL;
+(*
+  OPERATION
+    Returns the number of entries in the list.
+    Returns 0 if list is empty.
+*)
+
+PROCEDURE LMerge( List: aList; DataPtr: ADDRESS; Less: aLessProc; 
+                  VAR OK: BOOLEAN );
+(* 
+  OPERATION
+    Merges the data pointed to by DataPtr into the List at its correct sorted
+    list location, as specified by the ordering defined by Less.
+
+    Less is a BOOLEAN function as described in LSort.
+
+    The list location is updated to point to this new entry.
+
+    OK is FALSE if not enough memory to add new entry. You should release
+    some memory and try again.
+*)
+
+PROCEDURE LMoveAfter( List: aList; ListPtr: aListLocation );
+(*
+  OPERATION
+    Moves the given list entry to the new location AFTER current list location.
+
+    If current list location is undefined (NIL), the entry is moved to the 
+    end of the list.
+
+    The list location is updated to point to ListPtr.
+*)
+
+PROCEDURE LMoveBefore( List: aList; ListPtr: aListLocation );
+(*
+  OPERATION
+    Moves the given list entry to the new location BEFORE current list location.
+
+    If current list location is undefined (NIL), the entry is moved to the 
+    front of the list.
+
+    The list location is updated to point to ListPtr.
+*)
+
+PROCEDURE LMoveFirst( List: aList; ListPtr: aListLocation );
+(* 
+  OPERATION
+    Moves the given list entry to first in the list.
+
+    The list location is updated to point to ListPtr.
+*)
+
+PROCEDURE LMoveLast( List: aList; ListPtr: aListLocation );
+(* 
+  OPERATION
+    Moves the given list entry to last in the list.
+
+    The list location is updated to point to ListPtr.
+*)
+               
+PROCEDURE LOpen( VAR List: aList );
+(*
+  OPERATION
+    Creates a new (empty) list
+*)
+
+PROCEDURE LPurge( VAR List: aList );
+(*
+  OPERATION
+    Deletes a list.
+  NOTE
+    Only empty lists may be purged. To completely get rid of a list that has
+    entries in it, do a LDeleteAll followed by a LPurge.
+    If you attempt to purge a non empty list, this procedure will crash the
+    system.
+*)
+
+PROCEDURE LRemove( List: aList; VAR DataPtr: ADDRESS );
+(*
+  OPERATION
+    Removes the current list entry from the list, and returns a pointer to
+    the data.
+    The current list location is advanced to the following entry. If the
+    last entry is deleted, LEndOFList will return TRUE and the current 
+    list location is set to undefined (NIL).
+
+ NOTE
+    This is different from LDelete which also removes an entry from the list,
+    but deletes the data as well.
+    LRemove does not delete the data. 
+*)
+
+PROCEDURE LSort( List: aList; Less: aLessProc );
+(*
+  OPERATION
+    Sorts the list into ascending order as specified by Less.
+
+    Less should be a BOOLEAN function that, given pointers to two list
+    data areas, returns TRUE if the first data should be sorted as less
+    than the second data.
+*)
+
+PROCEDURE MemoryError;
+
+PROCEDURE ReadList( VAR DumpFile: File;
+                    VAR List:     aList;
+                        ReadProc: aListReadProc;
+                    VAR OK:       BOOLEAN );
+(*
+  OPERATION:
+    Reads the dump of a list made by DumpList, see above. Individual list
+    entries are read in by the user supplied procedure ReadProc.
+    It is the user's responsibility to ensure that his ReadProc matches his
+    DumpProc, used when the list was dumped.
+*)
+
+PROCEDURE UpdateListStatus( List: aList; ListStatus: aListStatus );
+(*
+  OPERATION:
+    Restores list header according a list status as provided by 
+    GetListStatus.
+  NOTE:
+    DO NOT USE THIS PROCEDURE UNLESS YOU REALLY KNOW WHAT YOU ARE DOING.
+    It is potentially very dangerous. It will set the list status
+    without any regard to the actual contents of the list. For example, the
+    count of items in the list will be set irrespective of the actual number
+    of entries.
+*)
+
+END Lists.
+ 

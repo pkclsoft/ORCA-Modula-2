@@ -1,0 +1,198 @@
+(*$NoImp*)
+DEFINITION MODULE PrintManager;
+(*
+  Print Manager Interface File
+*)
+
+FROM Common IMPORT
+  String255Ptr;
+FROM QuickDrawII IMPORT
+  Rect, RectPtr, GrafPortPtr, LocInfoPtr;
+FROM SYSTEM IMPORT
+  BYTE;
+
+CONST
+   (* Printer error codes *)
+   prAbort     = 80H;
+
+TYPE
+  (*
+    Printer information subrecord
+  *)
+  PrinterInfoRec =
+    RECORD
+      iDev:  CARDINAL;
+      iVRes: CARDINAL;
+      iHRes: CARDINAL;
+      rPage: Rect;
+    END;
+
+  (*
+    Printer style subrecord
+  *)
+
+  PrinterType = (imageWriter, laserWriter);
+
+  PrinterStyleRec =
+    RECORD
+      wDev:      INTEGER;
+      internA:   ARRAY [0..2] OF INTEGER;
+      feed:      INTEGER;
+      paperType: INTEGER;
+
+      CASE :PrinterType OF
+        imageWriter:  crWidth:   INTEGER;
+      | laserWriter:  vSizing:   INTEGER;
+                      reduction: INTEGER;
+      END;
+
+      internB:   INTEGER;
+    END;
+
+  BackgroundProc = PROCEDURE;
+
+  (*
+    Job information subrecord
+  *)
+  PrinterJobRec =
+    RECORD
+      iFstPage:  INTEGER;
+      iLstPage:  INTEGER;
+      iCopies:   INTEGER;
+      bJDocLoop: BYTE;
+      fFromUser: BYTE;
+      pIdleProc: BackgroundProc;
+      pFileName: String255Ptr;
+      iFileVol:  INTEGER;
+      bFileVers: BYTE;
+      bJobX:     BYTE;
+    END;
+
+  (*
+    Print record
+  *)
+  PrinterRec =
+    RECORD
+      prVersion: CARDINAL;
+      prInfo:    PrinterInfoRec;
+      rPaper:    Rect;
+      prStl:     PrinterStyleRec;
+      prInfoPT:  ARRAY [0..13] OF BYTE;
+      prXInfo:   ARRAY [0..23] OF BYTE;
+      prJob:     PrinterJobRec;
+      printX:    ARRAY [0..37] OF BYTE;
+      iReserved: CARDINAL;
+    END;
+  PrinterRecPtr = POINTER TO PrinterRec;
+  PrinterHandle = POINTER TO PrinterRecPtr;
+
+  (*
+    Printer status subrecord
+  *)
+  PrinterStatusRec =
+    RECORD
+      iTotPages:  CARDINAL;
+      iCurPage:   CARDINAL;
+      iTotCopies: CARDINAL;
+      iCurCopy:   CARDINAL;
+      iTotBands:  CARDINAL;
+      iCurBand:   CARDINAL;
+      fPgDirty:   BOOLEAN;
+      fImaging:   CARDINAL;
+      hPrint:     PrinterHandle;
+      pPrPort:    GrafPortPtr;
+      hPic:       LONGINT;
+    END;
+  PrinterStatusRecPtr = POINTER TO PrinterStatusRec;
+
+PROCEDURE PMBootInit; TOOL 0113H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE PMStartup(userID, dPageAddr: CARDINAL); TOOL 0213H;
+
+PROCEDURE PMShutDown; TOOL 0313H;
+
+PROCEDURE PMVersion(): CARDINAL; TOOL 0413H;
+
+PROCEDURE PMReset; TOOL 0513H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE PMStatus(): BOOLEAN; TOOL 0613H;
+
+PROCEDURE PMLoadDriver(driver: CARDINAL); TOOL 3513H;
+
+PROCEDURE PMUnloadDriver(driver: CARDINAL); TOOL 3413H;
+
+PROCEDURE PrChoosePrinter(): BOOLEAN; TOOL 1613H;
+(*
+  NOTE: This call is no longer supported.
+*)
+
+PROCEDURE PrCloseDoc(printerPort: GrafPortPtr); TOOL 0F13H;
+
+PROCEDURE PrClosePage(printerPort: GrafPortPtr); TOOL 1113H;
+
+PROCEDURE PrDefault(thePrintRecord: PrinterHandle); TOOL 0913H;
+
+PROCEDURE PrDriverVer(): CARDINAL; TOOL 2313H;
+
+PROCEDURE PrError(): CARDINAL; TOOL 1413H;
+
+PROCEDURE PrGetDocName(): String255Ptr; TOOL 3613H;
+
+PROCEDURE PrGetNetworkName(): String255Ptr; TOOL 2B13H;
+
+PROCEDURE PrGetPgOrientation(prRecordHdl: PrinterHandle): CARDINAL; TOOL 3813H;
+
+PROCEDURE PrGetPortDvrName(): String255Ptr; TOOL 2913H;
+
+PROCEDURE PrGetPrinterDvrName(): String255Ptr; TOOL 2813H;
+
+PROCEDURE PrGetPrinterSpecs; TOOL 1813H;
+(*
+  PrGetPrinterSpecs returns 2 words:  low word = type of printer
+                                      high word = printer characteristics
+
+  Use the following:
+
+  INLINE(PHA, PHA);
+  PrGetPrinterSpecs;
+  INLINE(PLA, PLX);
+  GETREG(Acc, printerType);
+  GETREG(XReg, characteristics);
+*)
+
+PROCEDURE PrGetUserName(): String255Ptr; TOOL 2A13H;
+
+PROCEDURE PrGetZoneName(): String255Ptr; TOOL 2513H;
+
+PROCEDURE PrJobDialog(thePrintRecord: PrinterHandle): BOOLEAN; TOOL 0C13H;
+
+PROCEDURE PrOpenDoc(thePrintRecord: PrinterHandle;
+                    printerPort:    GrafPortPtr): GrafPortPtr; TOOL 0E13H;
+
+PROCEDURE PrOpenPage(printerPort: GrafPortPtr; pageFrame: RectPtr); TOOL 1013H;
+
+PROCEDURE PrPicFile(thePrintRecord: PrinterHandle; 
+                    printerPort:    GrafPortPtr;
+                    statusRecPtr:   PrinterStatusRecPtr); TOOL 1213H;
+
+PROCEDURE PrPixelMap(    srcLoc:    LocInfoPtr;
+                     VAR srcRect:   Rect;
+                         colorFlag: BOOLEAN); TOOL 0D13H;
+
+PROCEDURE PrPortVer(): CARDINAL; TOOL 2413H;
+
+PROCEDURE PrSetDocName(docName: String255Ptr); TOOL 3713H;
+
+PROCEDURE PrSetError(errorNumber: CARDINAL); TOOL 1513H;
+
+PROCEDURE PrStlDialog(thePrintRecord: PrinterHandle): BOOLEAN; TOOL 0B13H;
+
+PROCEDURE PrValidate(thePrintRecord: PrinterHandle): BOOLEAN; TOOL 0A13H;
+
+END PrintManager.

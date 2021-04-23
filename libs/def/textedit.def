@@ -1,0 +1,443 @@
+(*$NoImp*)
+DEFINITION MODULE TextEdit;
+(*
+  Text Edit Tool Set Interface File
+*)
+
+FROM Common IMPORT
+  Ref;
+FROM EventManager IMPORT
+  EventRecord;
+FROM MemoryManager IMPORT
+  Handle;
+FROM QuickDrawII IMPORT
+  Rect, GrafPortPtr, Point;
+FROM SYSTEM IMPORT
+  ADDRESS, BYTE;
+
+CONST
+  (*
+    Text Edit error codes
+  *)
+  teAlreadyStarted    =   2201H;
+  teNotStarted        =   2202H;
+  teInvalidHandle     =   2203H;
+  teInvalidVerb       =   2204H;
+  teInvalidFlag       =   2205H;
+  teInvalidPCount     =   2206H;
+  teInvalidRect       =   2207H;
+  teBufferOverflow    =   2208H;
+  teInvalidLine       =   2209H;
+  teInvalidCall       =   220AH;
+  teInvalidParameter  =   220BH;
+  teInvalidTextBox2   =   220CH;
+
+  (*
+    Text descriptors:  Bits 0-2 of descriptor word
+  *)
+  dataIsPString       =   000H;
+  dataIsCString       =   001H;
+  dataIsC1Input       =   002H;
+  dataIsC1Output      =   003H;
+  dataIsTextBox2      =   004H;
+  dataIsTextBlock     =   005H;
+
+  (*
+    Text Edit reference descriptors
+  *)
+  teRefIsPtr          =   0000H;
+  teRefIsHandle       =   0001H;
+  teRefIsResource     =   0002H;
+  teRefIsNewHandle    =   0003H;
+
+TYPE
+  TEHandle = POINTER TO TERecordPtr;
+
+  GenericFilterProc = PROCEDURE(TEHandle, CARDINAL): CARDINAL;
+  KeyFilterProc = PROCEDURE(TEHandle, CARDINAL);
+  WordWrapHookProc = PROCEDURE(TEHandle, CARDINAL): CARDINAL;
+  WordBreakHookProc = PROCEDURE(TEHandle, CARDINAL): CARDINAL;
+  TEColorTablePtr = POINTER TO TEColorTable;
+  TEColorTable =
+    RECORD
+      contentColor:         CARDINAL;
+      outlineColor:         CARDINAL;
+      hiliteForeColor:      CARDINAL;
+      hiliteBackColor:      CARDINAL;
+      vertColorDescriptor:  CARDINAL;
+      vertColorRef:         Ref;
+      horzColorDescriptor:  CARDINAL;
+      horzColorRef:         Ref;
+      growColorDescriptor:  CARDINAL;
+      growColorRef:         Ref;
+    END;
+
+  TextBlockHandle = POINTER TO TextBlockPtr;
+  TextBlockPtr = POINTER TO TextBlock;
+  TextBlock =
+    RECORD
+      nextHandle: TextBlockHandle;
+      prevHandle: TextBlockHandle;
+      textLength: LONGINT;
+      flags:      CARDINAL;
+      reserved:   CARDINAL;
+  (* Change size of array to suit your needs. *)
+      theText:    ARRAY [1..512] OF CHAR;
+    END;
+
+  TextList =
+    RECORD
+      cachedHandle: TextBlockHandle;
+      cachedOffset: LONGINT;
+    END;
+
+  SuperItem = 
+    RECORD
+      theLength:  LONGINT;
+      theData:    LONGINT;
+    END;
+
+  SuperBlockHandle = POINTER TO SuperBlockPtr;
+  SuperBlockPtr = POINTER TO SuperBlock;
+  SuperBlock =
+    RECORD
+      nextHandle:  SuperBlockHandle;
+      prevHandle:  SuperBlockHandle;
+      textLength:  LONGINT;
+      reserved:    LONGINT;
+   (* Change the array size to suit your needs. *)
+      theItems:    ARRAY [1..10] OF SuperItem;
+    END;
+
+  SuperHandle =
+    RECORD
+      cachedHandle:   SuperBlockHandle;
+      cachedOffset:   LONGINT;
+      cachedIndex:    CARDINAL;
+      itemsPerBlock:  CARDINAL;
+    END;
+
+  TabItem = 
+    RECORD
+      tabKind: CARDINAL;
+      tabData: CARDINAL;
+    END;
+
+  StyleItem =
+    RECORD
+      length: LONGINT;
+      offset: LONGINT;
+    END;
+
+  TEStyle =
+    RECORD
+      fontID:     LONGINT;
+      foreColor:  CARDINAL;
+      backColor:  CARDINAL;
+      userData:   LONGINT;
+    END;
+
+  KeyRecord =
+    RECORD
+      theChar:        CARDINAL;
+      theModifiers:   CARDINAL;
+      theInputHandle: Handle;
+      cursorOffset:   LONGINT;
+      theOpCode:      CARDINAL;
+    END;
+
+  TERuler =
+    RECORD
+      leftMargin:     CARDINAL;
+      leftIndent:     CARDINAL;
+      rightMargin:    CARDINAL;
+      just:           INTEGER;
+      extraLS:        CARDINAL;
+      flags:          CARDINAL;
+      userData:       LONGINT;
+      tabType:        CARDINAL;
+   (* Change size of array for application. *)
+      tabs:           ARRAY [1..1] OF TabItem;
+      tabTerminator:  CARDINAL;
+    END;
+
+  TEStyleGroupHandle = POINTER TO TEStyleGroupPtr;
+  TEStyleGroupPtr = POINTER TO TEStyleGroup;
+  TEStyleGroup =
+    RECORD
+      count:   CARDINAL;
+   (* Change array size for application. *)
+      styles:  ARRAY [1..1] OF TEStyle;
+    END;
+
+  TEStyleItem =
+    RECORD
+      length:  LONGINT;
+      offset:  LONGINT;
+    END;
+
+  TEFormatHandle = POINTER TO TEFormatPtr;
+  TEFormatPtr = POINTER TO TEFormat;
+  TEFormat =
+    RECORD
+      version:          CARDINAL;
+      rulerListLength:  LONGINT;
+   (* Change array size for application. *)
+      theRulerList:     ARRAY [1..1] OF TERuler;
+      styleListLength:  LONGINT;
+   (* Change array size for application. *)
+      theStyleList:     ARRAY [1..1] OF TEStyle;
+      numberOfStyles:   LONGINT;
+   (* Change array size for application. *)
+      theStyles:        ARRAY [1..1] OF TEStyleItem;
+    END;
+
+  TEParamBlock =
+    RECORD
+      pCount:           CARDINAL;
+      ID:               LONGINT;
+      rect:             Rect;
+      procRef:          LONGINT;
+      flag:             CARDINAL;
+      moreFlags:        CARDINAL;
+      refCon:           LONGINT;
+      textFlags:        LONGINT;
+      indentRect:       Rect;
+      vertBar:          Handle;
+      vertAmount:       CARDINAL;
+      horzBar:          Handle;
+      horzAmount:       CARDINAL;
+      styleRef:         Ref;
+      textDescriptor:   CARDINAL;
+      textRef:          Ref;
+      textLength:       LONGINT;
+      maxChars:         LONGINT;
+      maxLines:         LONGINT;
+      maxCharsPerLines: CARDINAL;
+      maxHeight:        CARDINAL;
+      colorRef:         Ref;
+      drawMode:         CARDINAL;
+      filterProcPtr:    GenericFilterProc;
+    END;
+
+  TEInfoRec =
+    RECORD
+      charCount:     LONGINT;
+      lineCount:     LONGINT;
+      formatMemory:  LONGINT;
+      totalMemory:   LONGINT;
+      styleCount:    LONGINT;
+      rulerCount:    LONGINT;
+    END;
+
+  teHooks = RECORD
+      charFilter:  GenericFilterProc;
+      wordWrap:    WordWrapHookProc;
+      wordBreak:   WordBreakHookProc;
+      drawText:    ADDRESS;
+      eraseText:   ADDRESS;
+    END;
+
+  TextEditFlagBit = (teBit0, teBit1, teBit2, teBit3, teBit4, teBit5, teBit6,
+                     teBit7, teBit8, teBit9, teBit10, teBit11, teBit12,
+                     teBit13, teBit14, teBit15, teBit16, teBit17, teBit18, 
+                     fDrawInactiveSelection, fDisableSelection, fGrowRuler,
+                     fColorHilight, fDrawBounds, fTabSwitch, fSmartCutPaste,
+                     fReadOnly, fNoScroll, fNoWordWrap, fSingleStyle,
+                     fSingleFormat, fNotControl);
+  TextEditFlags = SET OF TextEditFlagBit;
+
+  TERecord =
+    RECORD
+      ctrlNext:         Handle;
+      inPort:           GrafPortPtr;
+      boundsRect:       Rect;
+      ctrlFlag:         BYTE;
+      ctrlHilite:       BYTE;
+      lastErrorCode:    CARDINAL;
+      ctrlProc:         ADDRESS;
+      ctrlAction:       LONGINT;
+      filterProc:       GenericFilterProc;
+      ctrlRefCon:       LONGINT;
+      colorRef:         Ref;
+      textFlags:        TextEditFlags;
+      textLength:       LONGINT;
+      blockList:        TextList;
+      ctrlID:           CARDINAL;
+      ctrlMoreFlags:    BITSET;
+      ctrlVersion:      CARDINAL;
+      viewRect:         Rect;
+      totalHeight:      LONGINT;
+      lineSuper:        SuperHandle;
+      styleSuper:       SuperHandle;
+      styleList:        Handle;
+      rulerList:        Handle;
+      lineAtEndFlag:    INTEGER;
+      selectionStart:   LONGINT;
+      selectionEnd:     LONGINT;
+      selectionActive:  CARDINAL;
+      selectionState:   CARDINAL;
+      caretTime:        LONGINT;
+      nullStyleActive:  CARDINAL;
+      nullStyle:        TEStyle;
+      topTextOffset:    LONGINT;
+      topTextVPos:      CARDINAL;
+      vertScrollBar:    Handle;
+      vertScrollPos:    LONGINT;
+      vertScrollMax:    LONGINT;
+      vertScrollAmount: CARDINAL;
+      horzScrollBar:    Handle;
+      horzScrollPos:    LONGINT;
+      horzScrollMax:    LONGINT;
+      horzScrollAmount: CARDINAL;
+      growBoxHandle:    Handle;
+      maximumChars:     LONGINT;
+      maximumLines:     LONGINT;
+      maxCharsPerLine:  CARDINAL;
+      maximumHeight:    CARDINAL;
+      textDrawMode:     CARDINAL;
+      wordBreakHook:    WordBreakHookProc;
+      wordWrapHook:     WordWrapHookProc;
+      keyFilter:        KeyFilterProc;
+      theFilterRect:    Rect;
+      theBufferVPos:    CARDINAL;
+      theBufferHPos:    CARDINAL;
+      theKeyRecord:     KeyRecord;
+      cachedSelcOffset: LONGINT;
+      cachedSelcVPos:   CARDINAL;
+      cachedSelcHPos:   CARDINAL;
+      mouseRect:        Rect;
+      mouseTime:        LONGINT;
+      mouseKind:        CARDINAL;
+      lastClick:        LONGINT;
+      savedHPos:        CARDINAL;
+      anchorPoint:      LONGINT;
+    END;
+  TERecordPtr = POINTER TO TERecord;
+
+PROCEDURE TEBootInit; TOOL 0122H;
+
+PROCEDURE TEStartup(myId: CARDINAL; directPage: CARDINAL); TOOL 0222H;
+
+PROCEDURE TEShutDown; TOOL 0322H;
+
+PROCEDURE TEVersion(): CARDINAL; TOOL 0422H;
+
+PROCEDURE TEReset; TOOL 0522H;
+
+PROCEDURE TEStatus(): BOOLEAN; TOOL 0622H;
+
+PROCEDURE TEActivate(theTERecord: TEHandle); TOOL 0F22H;
+
+PROCEDURE TEClear(theTERecord: TEHandle); TOOL 1922H;
+
+PROCEDURE TEClick(VAR theEvent:     EventRecord;
+                      theTERecord:  TEHandle); TOOL 1122H;
+
+PROCEDURE TECompactRecord(theTERecord: TEHandle); TOOL 1728H;
+
+PROCEDURE TECopy(theTERecord: TEHandle); TOOL 1722H;
+
+PROCEDURE TECut(theTERecord: TEHandle); TOOL 1622H;
+
+PROCEDURE TEDeactivate(theTERecord: TEHandle); TOOL 1022H;
+
+PROCEDURE TEGetDefProc(): ADDRESS; TOOL 2222H;
+
+PROCEDURE TEGetInternalProc(): ADDRESS; TOOL 2622H;
+
+PROCEDURE TEGetLastError(clearFlag:   CARDINAL;
+                         theTERecord: TEHandle): CARDINAL; TOOL 2722H;
+
+PROCEDURE TEGetRuler(rulerDescriptor: CARDINAL; 
+                     rulerRef:        Ref;
+                     theTERecord:     TEHandle); TOOL 2322H;
+
+PROCEDURE TEGetSelection(selectionStart:  ADDRESS;
+                         selectionEnd:    ADDRESS;
+                         theTERecord:     TEHandle); TOOL 1C22H;
+
+PROCEDURE TEGetSelectionStyle(VAR commonStyle: TEStyle; 
+                                  styleHandle: TEStyleGroupHandle;
+                                  theTERecord: TEHandle): CARDINAL; TOOL 1E22H;
+
+PROCEDURE TEGetText(bufferDescriptor: CARDINAL;
+                    bufferRef:        Ref;
+                    bufferLength:     LONGINT;
+                    styleDescriptor:  CARDINAL;
+                    styleRef:         Ref;
+                    theTERecord:      TEHandle): LONGINT; TOOL 0C22H;
+
+PROCEDURE TEGetTextInfo(VAR infoRec:        TEInfoRec;
+                            parameterCount: CARDINAL;
+                            theTERecord:    TEHandle); TOOL 0D22H;
+
+PROCEDURE TEIdle(theTERecord: TEHandle); TOOL 0E22H;
+
+PROCEDURE TEInsert(textDescriptor:  CARDINAL; 
+                   textRef:         Ref;
+                   textLength:      LONGINT;
+                   styleDescriptor: CARDINAL; 
+                   styleRef:        Ref; 
+                   theTERecord:     TEHandle); TOOL 1A22H;
+
+PROCEDURE TEInsertPageBreak; TOOL 2322H;
+
+PROCEDURE TEKey(VAR theEventRecord: EventRecord;
+                    theTERecord:    TEHandle); TOOL 1422H;
+
+PROCEDURE TEKill(theTERecord: TEHandle); TOOL 0A22H;
+
+PROCEDURE TENew(VAR parameterBlock: TEParamBlock): TEHandle; TOOL 0922H;
+
+PROCEDURE TEOffsetToPoint(    textOffset:   LONGINT; 
+                          VAR vertPosPtr:   Point;
+                          VAR horzPosPtr:   Point;
+                              theTERecord:  TEHandle); TOOL 2022H;
+
+PROCEDURE TEPaintText(    thePort:      GrafPortPtr;
+                          startingLine: LONGINT;
+                      VAR destRect:     Rect;
+                          flags:        CARDINAL;
+                          theTERecord:  TEHandle): LONGINT; TOOL 1322H;
+
+PROCEDURE TEPaste(theTERecord: TEHandle); TOOL 1822H;
+
+PROCEDURE TEPointToOffset(vertPos:      LONGINT;
+                          horzPos:      LONGINT;
+                          theTERecord:  TEHandle): LONGINT; TOOL 2122H;
+
+PROCEDURE TEReplace(textDescriptor:   CARDINAL;
+                    textRef:          Ref;
+                    textLength:       LONGINT;
+                    styleDescriptor:  CARDINAL; 
+                    styleRef:         Ref;
+                    theTERecord:      TEHandle); TOOL 1B22H;
+
+PROCEDURE TEScroll(scrollDescriptor:  CARDINAL;
+                   vertAmount:        LONGINT;
+                   horzAmount:        LONGINT;
+                   theTERecord:       TEHandle); TOOL 2522H;
+
+PROCEDURE TESetRuler(rulerDescriptor: CARDINAL;
+                     rulerRef:        Ref;
+                     theTERecord:     TEHandle); TOOL 2422H;
+
+PROCEDURE TESetSelection(selectionStart:  LONGINT;
+                         selectionEnd:    LONGINT; 
+                         theTEREcord:     TEHandle); TOOL 1D22H;
+
+PROCEDURE TESetText(textDescriptor:   CARDINAL;
+                    textRef:          Ref;
+                    textLength:       LONGINT;
+                    styleDescriptor:  CARDINAL;
+                    styleRef:         Ref;
+                    theTERecord:      TEHandle); TOOL 0B22H;
+
+PROCEDURE TEStyleChange(    flags:        CARDINAL;
+                        VAR newStyle:     TEStyle;
+                            theTERecord:  TEHandle); TOOL 1F22H;
+
+PROCEDURE TEUpdate(theTERecord: TEHandle); TOOL 1222H;
+
+END TextEdit.

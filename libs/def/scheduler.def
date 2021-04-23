@@ -1,0 +1,35 @@
+(*$NoImp*)
+DEFINITION MODULE Scheduler;
+(*
+  Scheduler Tool Set Interface File
+*)
+
+FROM SYSTEM IMPORT
+  ADDRESS;
+
+PROCEDURE SchBootInit; TOOL 0107H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE SchStartup; TOOL 0207H;
+
+PROCEDURE SchShutDown; TOOL 0307H;
+
+PROCEDURE SchVersion(): CARDINAL; TOOL 0407H;
+
+PROCEDURE SchReset; TOOL 0507H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE SchStatus(): BOOLEAN; TOOL 0607H;
+
+PROCEDURE SchAddTask(theTask: ADDRESS): CARDINAL; TOOL 0907H;
+
+PROCEDURE SchFlush; TOOL 0A07H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+END Scheduler.

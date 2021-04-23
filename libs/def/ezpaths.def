@@ -1,0 +1,56 @@
+(*$Keep 'EZPaths'*)
+DEFINITION MODULE EZPaths;
+(*
+  This module supplies a number of routines that you can use to manipulate
+  (forgive me) MS-DOS style paths.
+
+  You can specify a path string by referring to an environment variable, or
+  by explicitly supplying a string.
+
+  A path is a string of characters that represent a variable number of 
+  directories (each defined by a full pathname), separated by a double colon
+  ("::").  The double colon is used instead of a semi-colon in order to 
+  maintain compatability with HFS.
+
+  NOTE:
+    The directory walker, ".." is not recognised by this module.  It is
+    assumed that a path contains only valid GSOS pathnames.
+
+  NOTE:
+    Do not mix separators within any one entry within a path.
+
+  NOTE:
+    No individual pathname may end in a separator.  eg. Use "8", not "8/".
+*)
+
+PROCEDURE FindFileInPath(VAR filename:  ARRAY OF CHAR;
+                         VAR path:      ARRAY OF CHAR;
+                             isEnvVar:  BOOLEAN;
+                         VAR pathname:  ARRAY OF CHAR;
+                         VAR OK:        BOOLEAN);
+(*
+  OPERATION:
+    Attempts to locate the file specified by "filename" within one of the
+    directories specified by "path".  The search commences though in the
+    "current" directory or prefix.
+
+    If "isEnvVar" is TRUE, then "path" is actually the name of an environment
+    variable containing the path.
+
+    If found, then the full pathname of the file is returned in "pathname",
+    and OK is returned TRUE;
+
+    If found, then OK is returned FALSE, and "pathname" is undefined.
+
+    NOTE:
+      If you are using this procedure in an application that does not 
+      necessarily run under a shell such as Orca or Gnome, then don't
+      call it with isEnvVar TRUE.  This prevents any shell calls being
+      made.
+
+    NOTE:
+      Both "filename" and "path" are passed as VAR parameters for efficiency.
+      This procedure DOES NOT alter them in any way.
+*)
+
+END EZPaths.

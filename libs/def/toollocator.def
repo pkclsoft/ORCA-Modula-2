@@ -1,0 +1,179 @@
+(*$NoImp*)
+DEFINITION MODULE ToolLocator;
+(*
+  Tool Locator Interface File
+*)
+
+FROM Common IMPORT
+  String255Ptr, SCB;
+FROM MemoryManager IMPORT
+  Handle;
+FROM SYSTEM IMPORT
+  ADDRESS, BYTE;
+
+CONST
+  (*
+    MessageCenter action codes
+  *)
+  addMessage  =   1;          (* add message to msg center data *)
+  getMessage  =   2;          (* return message from msg center *)
+  deleteMessage = 3;          (* delete message from msg center *)
+
+
+TYPE
+  (*
+    Table of tools to load from the TOOLS directory in the SYSTEM folder
+  *)
+  ToolSpec =
+    RECORD
+      toolNumber: CARDINAL;
+      minVersion: CARDINAL;
+    END;
+
+  (*
+    Change array size for your application.
+  *)
+  ToolArray = ARRAY [1..30] OF ToolSpec;
+    
+  ToolTable =
+    RECORD
+      numToolsRequired:  CARDINAL;
+      tool:              ToolArray;
+    END;
+
+  StartStopRecord =
+    RECORD
+      flags:        CARDINAL;
+      videoMode:    SCB;
+      resFileID:    CARDINAL;
+      dPageHandle:  Handle;
+      numTools:     CARDINAL;
+      toolArray:    ToolArray;
+    END;
+  StartStopRecordPtr = POINTER TO StartStopRecord;
+      
+  (* Function pointer table *)
+  FPT =
+    RECORD
+      count: LONGINT;          (* number of PROCEDUREs plus 1                *)
+      addr1: ADDRESS;          (* ADDRESS of BootInit routine minus 1        *)
+      addr2: ADDRESS;          (* ADDRESS of StartUp routine minus 1         *)
+      addr3: ADDRESS;          (* ADDRESS of ShutDown routine minus 1        *)
+      addr4: ADDRESS;          (* ADDRESS of Version routine minus 1         *)
+      addr5: ADDRESS;          (* ADDRESS of Reset routine minus 1           *)
+      addr6: ADDRESS;          (* ADDRESS of Status routine minus 1          *)
+      addr7: ADDRESS;          (* ADDRESS of reserved routine minus 1        *)
+      addr8: ADDRESS;          (* ADDRESS of reserved routine minus 1        *)
+      addr9: ADDRESS;          (* ADDRESS of 1st nonrequired routine minus 1 *)
+      (* Other pointers to additional nonrequired routines, each minus 1     *)
+      addr: ARRAY [1..50] OF ADDRESS;
+    END;
+  FPTPtr = POINTER TO FPT;
+
+  MessageString =
+    RECORD
+      length: BYTE;
+      text:   ARRAY [0..63] OF CHAR;
+    END;
+
+  MessageRecord =
+    RECORD
+      blockLen:   CARDINAL;
+      nameString: MessageString;   (* may be a max of 64 chars long *)
+      (* Change length of array to suit application. *)
+      dataBlock:   ARRAY [1..1] OF BYTE;
+    END;
+  MessageRecordPtr = POINTER TO MessageRecord;
+  MessageRecordHand = POINTER TO MessageRecordPtr;
+
+  RequestProc = PROCEDURE(CARDINAL, ADDRESS, ADDRESS): CARDINAL;
+
+PROCEDURE TLBootInit; TOOL 0101H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE TLStartup; TOOL 0201H;
+
+PROCEDURE TLShutDown; TOOL 0301H;
+
+PROCEDURE TLVersion(): CARDINAL; TOOL 0401H;
+
+PROCEDURE TLReset; TOOL 0501H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE TLStatus(): BOOLEAN; TOOL 0601H;
+
+PROCEDURE AcceptRequests(nameString:  String255Ptr;
+                         userID:      CARDINAL;
+                         requestProc: RequestProc); TOOL 1B01H;
+
+PROCEDURE GetFuncPtr(userOrSystem:  CARDINAL;
+                     funcNum:       BYTE;
+                     TSNum:         BYTE): LONGINT; TOOL 0B01H;
+
+PROCEDURE GetMsgHandle(flags:       CARDINAL;
+                       messageRef:  LONGINT): MessageRecordHand; TOOL 1A01H;
+
+PROCEDURE GetTSPtr(userOrSystem, tsNum: CARDINAL): LONGINT; TOOL 0901H;
+
+PROCEDURE GetWAP(userOrSystem, tsNum: CARDINAL): LONGINT; TOOL 0C01H;
+
+PROCEDURE LoadOneTool(toolNumber, minVersion: CARDINAL); TOOL 0F01H;
+
+PROCEDURE LoadTools(VAR theToolTable: ToolTable); TOOL 0E01H;
+
+PROCEDURE MessageByName(    createItFlag: BOOLEAN;
+                        VAR inputRecord:  MessageRecord): LONGINT; TOOL 1701H;
+(*
+  MessageByName returns two words:  lo word = message number
+                                    hi word = BOOLEAN flag
+*)
+
+PROCEDURE MessageCenter(action:         CARDINAL;
+                        msgID:          CARDINAL;
+                        messageHandle:  MessageRecordHand); TOOL 1501H;
+
+PROCEDURE RestoreTextState(stateHandle: Handle); TOOL 1401H;
+
+PROCEDURE SaveTextState(): Handle; TOOL 1301H;
+
+PROCEDURE SendRequest(reqCode:  CARDINAL;
+                      sendHow:  CARDINAL;
+                      target:   LONGINT;
+                      dataIn:   ADDRESS;
+                      dataOut:  ADDRESS); TOOL 1C01H;
+
+PROCEDURE SetDefaultTPT; TOOL 1601H;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE SetTSPtr(userOrSystem, tsNum: CARDINAL; theFPT: FPTPtr); TOOL 0A01H;
+
+PROCEDURE SetWAP(userOrSystem, tsNum: CARDINAL; waptPtr: ADDRESS); TOOL 0D01H;
+
+PROCEDURE ShutDownTools(startStopDesc:    CARDINAL;
+                        startStopRecRef:  ADDRESS); TOOL 1901H;
+
+PROCEDURE StartupTools(myID:            CARDINAL;
+                       startStopDesc:   CARDINAL;
+                       startStopRecRef: ADDRESS): LONGINT; TOOL 1801H;
+ 
+PROCEDURE TLMountVolume(whereX:   CARDINAL;
+                        whereY:   CARDINAL;
+                        line1Ptr: String255Ptr;
+                        line2Ptr: String255Ptr;
+                        but1Ptr:  String255Ptr;
+                        but2Ptr:  String255Ptr): CARDINAL; TOOL 1101H;
+
+PROCEDURE TLTextMountVolume(line1Ptr:   String255Ptr;
+                            line2Ptr:   String255Ptr;
+                            button1Ptr: String255Ptr;
+                            button2Ptr: String255Ptr): CARDINAL; TOOL 1201H;
+
+PROCEDURE UnloadOneTool(toolNumber: CARDINAL); TOOL 1001H;
+
+END ToolLocator.

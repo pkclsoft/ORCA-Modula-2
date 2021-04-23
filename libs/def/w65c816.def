@@ -1,0 +1,110 @@
+(*$NoImp*)
+DEFINITION MODULE W65C816;
+
+CONST
+  (*
+    Registers for use with SETREG and GETREG
+  *)
+  CPU  = 0;
+  Acc  = 1;
+  XReg = 2;
+  YReg = 3;
+
+  (*
+    65816 Instruction Mnemonics
+
+    Group 1 Instructions
+  *)
+  ADC       = 061H;         LDA       = 0A1H;
+  And       = 021H;         ORA       = 001H;
+  CMP       = 0C1H;         SBC       = 0E1H;
+  EOR       = 041H;         STA       = 081H;
+
+  (*
+    Group 2 Instructions
+  *)
+  ASL         = 002H;       ROL       = 022H;
+  DEC         = 0C6H;       ROR       = 062H;     DECACC = 03AH;
+  Inc         = 0E6H;       STX       = 082H;     INCACC = 01AH;
+  LSR         = 042H;       STY       = 080H;
+
+  (*
+    Group 3 Instructions
+  *)
+  LDX         = 0A2H;       TRB       = 014H;
+  LDY         = 0A0H;       TSB       = 004H;
+  CPX         = 0E0H;       BCC       = 090H;
+  CPY         = 0C0H;       BCS       = 0B0H;
+  BEQ         = 0F0H;       BIT       = 024H;  BITIMMED = 089H;
+  BMI         = 030H;       BNE       = 0D0H;
+  BPL         = 010H;       BRA       = 080H;
+  BRK         = 000H;       BRL       = 082H;
+  BVC         = 050H;       BVS       = 070H;
+  CLC         = 018H;       CLD       = 0D8H;
+  CLI         = 058H;       CLV       = 0B8H;
+  COP         = 002H;       DEX       = 0CAH;
+  DEY         = 088H;       INX       = 0E8H;
+  INY         = 0C8H;       JSL       = 022H;
+  MVN         = 054H;
+  MVP         = 044H;       NOP       = 0EAH;
+  PEA         = 0F4H;       PEI       = 0D4H;
+  PER         = 062H;       PHA       = 048H;
+  PHB         = 08BH;       PHD       = 00BH;
+  PHK         = 04BH;       PHP       = 008H;
+  PHX         = 0DAH;       PHY       = 05AH;
+  PLA         = 068H;       PLB       = 0ABH;
+  PLD         = 02BH;       PLP       = 028H;
+  PLX         = 0FAH;       PLY       = 07AH;
+  REP         = 0C2H;       RTI       = 040H;
+  RTL         = 06BH;       RTS       = 060H;
+  SEC         = 038H;       SED       = 0F8H;
+  SEI         = 078H;       SEP       = 0E2H;
+  STP         = 0DBH;
+  TAX         = 0AAH;       TAY       = 0A8H;
+  TCD         = 05BH;       TCS       = 01BH;
+  TDC         = 07BH;       TSC       = 03BH;
+  TSX         = 0BAH;       TXA       = 08AH;
+  TXS         = 09AH;       TXY       = 09BH;
+  TYA         = 098H;       TYX       = 0BBH;
+  WAI         = 0CBH;       WDM       = 042H;
+  XBA         = 0EBH;       XCE       = 0FBH;
+
+  (*
+    Special Instructions - These don't really come under one of the main
+    groups, so they are treated separately.
+  *)
+  JML         = 040H;       JMP       = 040H;
+  JSRABS      = 020H;       JSRINDBYX = 0FCH;
+  STZABS      = 09CH;       STZDIRECT = 064H;
+  STZDIRBYX   = 074H;       STZABSBYX = 09EH;
+
+  (*
+    Modifiers for JML and JMP
+  *)
+  JABS        = 00CH;       JABSL     = 01CH;
+  JABSLIND    = 09CH;       JABSIND   = 02CH;
+  JABSINDBYX  = 0ACH;
+
+  (*
+    Address mode patterns
+
+    Group 1 and 2                 Group 3
+  *)
+  IMMEDIATE   = 008H;             IMMEDIATE3  = 000H;
+  DIRECT      = 004H;             (* Same as Groups 1 & 2 *)
+  ABSOLUTE    = 00CH;             (* Same as Groups 1 & 2 *)
+  DIRECTBYX   = 014H;             (* Same as Groups 1 & 2 *)
+  DIRECTBYY   = 014H;             (* Same as Groups 1 & 2 *)
+  ABSBYX      = 01CH;             (* Same as Groups 1 & 2 (also ABSBYY) *)
+  ABSBYY      = 018H;
+  DIRINDBYX   = 000H;             (* TRB and TSB *)
+  DIRINDBYY   = 010H;             DIRECT3     = 000H;
+  DIRINDBYYLG = 016H;             ABSOLUTE3   = 008H;
+  DIRINDIRECT = 011H;
+  DIRINDLONG  = 006H;
+  ABSLONG     = 00EH;
+  ABSLONGBYX  = 01EH;
+  STKRELATIVE = 002H;
+  STKRELBYY   = 012H;
+
+END W65C816.

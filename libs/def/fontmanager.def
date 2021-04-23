@@ -1,0 +1,183 @@
+(*$NoImp*)
+DEFINITION MODULE FontManager;
+(*
+  Font Manager Interface File
+*)
+
+FROM Common IMPORT
+  String255, String255Ptr;
+FROM MemoryManager IMPORT
+  Handle;
+FROM SYSTEM IMPORT
+  BYTE;
+
+TYPE
+  FontStatBit = (fsMem, fsUnreal, fsApFam, fsApVar, fsPurge, fsNotDisk,
+                  fsReserved6, fsReserved7, fsReserved8, fsReserved9, 
+                  fsReserved10, fsReserved11, fsReserved12, fsReserved13, 
+                  fsReserved14, fsNotFound);
+  FontStatBits = SET OF FontStatBit;
+
+  FontSpecBit = (fsMemOnly, fsRealOnly, fsAnyFam, fsAnyStyle, fsAnySize);
+  FontSpecBits = SET OF FontSpecBit;
+
+  (*
+    We equate these three types to FontSpecBits simply to save defining three
+    more sets that only contain one or two defined bits.
+  *)
+  FamStatBits =    FontSpecBits;
+  FamSpecBits =    FontSpecBits;
+  FontScaleWord =  FontSpecBits;
+
+CONST
+  (* 
+    Font stat bits
+  *)
+  memBit =      FontStatBits{fsMem};       (* in memory                      *)
+  unrealBit =   FontStatBits{fsUnreal};    (* scaled from another font       *)
+  apFamBit =    FontStatBits{fsApFam};     (* family supplied by application *)
+  apVarBit =    FontStatBits{fsApVar};     (* added by AddFontVar call or    *)
+                                            (*   scaled from such a font      *)
+  purgeBit =    FontStatBits{fsPurge};     (* font is purgeable              *)
+  notDiskBit =  FontStatBits{fsNotDisk};   (* not in ROM or in FONTS folder  *)
+  notFoundBit = FontStatBits{fsNotFound};  (* specified font not found       *)
+
+  (*
+    Font spec bits
+  *)
+  memOnlyBit =  FontSpecBits{fsMemOnly};   (* only ROM fonts and fonts     *)
+                                            (* currently in memory          *)
+  realOnlyBit = FontSpecBits{fsRealOnly};  (* only unscaled fonts          *)
+  anyFamBit =   FontSpecBits{fsAnyFam};    (* ignore family number in call *)
+  anyStyleBit = FontSpecBits{fsAnyStyle};  (* any partially matching style *)
+  anySizeBit =  FontSpecBits{fsAnySize};   (* ignore point size in call    *)
+
+  (*
+    Although the next three bit definitions are not actually placed within the
+    FontSpecBits word, for simplicity, we define them as being so, rather than
+    define three more bitsets that only contain one or two bits actually
+    defined.
+  *)
+
+  (*
+    Family stat bits
+  *)
+  notBaseBit =  notDiskBit;   (* family is not a base family *)
+
+  (*
+    Family spec bits 
+  *)
+  baseOnlyBit = notDiskBit;   (* allow only base families *)
+
+  (* 
+    Scale word 
+  *)
+  dontScaleBit = memOnlyBit;  (* disable font scaling *)
+
+  (* 
+    Family Numbers 
+  *)
+  newYork         =   0002H;
+  geneva          =   0003H;
+  monaco          =   0004H;
+  Venice          =   0005H;
+  london          =   0006H;
+  athens          =   0007H;
+  sanFran         =   0008H;
+  toronto         =   0009H;
+  cairo           =   000BH;
+  losAngeles      =   000CH;
+  times           =   0014H;
+  helvetica       =   0015H;
+  courier         =   0016H;
+  symbol          =   0017H;
+  taliesin        =   0018H;
+  shaston         =   0FFFEH;
+
+TYPE
+  FontID =
+    RECORD
+      famNum:     CARDINAL;
+      fontStyle:  BYTE;
+      fontSize:   BYTE;
+    END;
+  FontIDPtr = POINTER TO FontID;
+
+  FontStatRec = 
+    RECORD
+      resultID:     FontID;
+      resultStats:  FontStatBits;
+    END;
+  FontStatRecPtr = POINTER TO FontStatRec;
+
+PROCEDURE FMBootInit; TOOL 011BH;
+(*
+  WARNING: an application should NEVER make this call
+*)
+
+PROCEDURE FMStartUp(userID, dPageAddr: CARDINAL); TOOL 021BH;
+
+PROCEDURE FMShutDown; TOOL 031BH;
+
+PROCEDURE FMVersion(): CARDINAL; TOOL 041BH;
+
+PROCEDURE FMReset; TOOL 051BH;
+(* WARNING: an application should NEVER make this call *)
+
+PROCEDURE FMStatus(): BOOLEAN; TOOL 061BH;
+
+PROCEDURE AddFamily(famNum:   CARDINAL;
+                    namePtr:  String255Ptr); TOOL 0D1BH;
+
+PROCEDURE AddFontVar(fontHandle: Handle; newSpecs: FontSpecBits); TOOL 141BH;
+
+PROCEDURE ChooseFont(currentID: FontID; famSpecs: FamSpecBits): LONGINT; TOOL 161BH;
+
+PROCEDURE CountFamilies(famSpecs: FamSpecBits): CARDINAL; TOOL 091BH;
+
+PROCEDURE CountFonts(desiredID: FontID; fontSpecs: FontSpecBits): CARDINAL; TOOL 101BH;
+
+PROCEDURE FamNum2ItemID(famNum: CARDINAL): CARDINAL; TOOL 1B1BH;
+
+PROCEDURE FindFamily(    famSpecs:    FamSpecBits;
+                         positionNum: CARDINAL;
+                     VAR name:        String255): CARDINAL; TOOL 0A1BH;
+
+PROCEDURE FindFontStats(    desiredID:    FontID;  
+                            fontSpecs:    FontSpecBits;
+                            positionNum:  CARDINAL;
+                        VAR resultPtr:    FontStatRec); TOOL 111BH;
+
+PROCEDURE FixFontMenu(menuID:     CARDINAL;
+                      startingID: CARDINAL;
+                      famSpecs:   FamSpecBits); TOOL 151BH;
+
+PROCEDURE FMGetCurFID(): LONGINT; TOOL 1A1BH;
+
+PROCEDURE FMGetSysFID(): LONGINT; TOOL 191BH;
+
+PROCEDURE FMSetSysFont(fontID: FontID); TOOL 181BH;
+
+PROCEDURE GetFamInfo(    famNum:  CARDINAL; 
+                     VAR name:    String255): CARDINAL; TOOL 0B1BH;
+
+PROCEDURE GetFamNum(name: String255Ptr): CARDINAL; TOOL 0C1BH;
+
+PROCEDURE InstallFont(desiredID: FontID; scaleWord: FontScaleWord); TOOL 0E1BH;
+
+PROCEDURE InstallWithStats(    desiredID: FontID; 
+                               scaleWord: FontScaleWord;
+                           VAR resultPtr: FontStatRec); TOOL 1C1BH;
+
+PROCEDURE ItemID2FamNum(itemID: CARDINAL): CARDINAL; TOOL 171BH;
+
+PROCEDURE LoadFont(    desiredID:   FontID; 
+                       fontSpecs:   FontSpecBits;
+                       positionNum: CARDINAL;
+                   VAR resultPtr:   FontStatRec); TOOL 121BH;
+
+PROCEDURE LoadSysFont; TOOL 131BH;
+
+PROCEDURE SetPurgeStat(fontID: FontID; purgeStat: FontStatBits); TOOL 0F1BH;
+
+END FontManager.
