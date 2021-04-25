@@ -1,0 +1,13 @@
+DEFINITION MODULE Bug006;
+
+EXPORT QUALIFIED document, documentPtr;
+
+TYPE
+  documentPtr = POINTER TO document;
+
+  document =
+    RECORD
+      next: documentPtr;
+    END;
+
+END Bug006.

@@ -134,6 +134,10 @@ resource rCString(8192+41, nospecialmemory) {
   "number too large"
 };
 
+resource rCString(8192+42, nospecialmemory) {
+  "comment without closing *)"
+};
+
 resource rCString(8192+44, nospecialmemory) {
   "expression must contain constant operands only"
 };
@@ -221,7 +225,7 @@ resource rCString(8192+73, nospecialmemory) {
 };
 
 resource rCString(8192+74, nospecialmemory) {
-  "tool, gsos or forward procedure cannot be declared in definition module"
+  "code or forward procedure cannot be declared in definition module"
 };
 
 resource rCString(8192+75, nospecialmemory) {
@@ -234,6 +238,10 @@ resource rCString(8192+76, nospecialmemory) {
 
 resource rCString(8192+77, nospecialmemory) {
   "identifiers in heading and at end do not match"
+};
+
+resource rCString(8192+78, nospecialmemory) {
+  "function called as a pure procedure"
 };
 
 resource rCString(8192+80, nospecialmemory) {
@@ -262,12 +270,20 @@ resource rCString(8192+89, nospecialmemory) {
 
 /* Implementation restrictions of compiler */
 
+resource rCString(8192+90, nospecialmemory) {
+  "in {a..b}, if 'a' is a constant, 'b' must also be a constant"
+};
+
 resource rCString(8192+92, nospecialmemory) {
   "too many cases"
 };
 
 resource rCString(8192+94, nospecialmemory) {
   "index type of array must be a subrange"
+};
+
+resource rCString(8192+95, nospecialmemory) {
+  "subrange bound must be less than 2^16"
 };
 
 resource rCString(8192+96, nospecialmemory) {
@@ -474,6 +490,10 @@ resource rCString(8192+186, nospecialmemory) {
   "no quad registers available (compiler error)"
 };
 
+resource rCString(8192+195, nospecialmemory) {
+  "bit number must be in range 0 thru 15"
+};
+
 /* Implementation restrictions of system */
 
 resource rCString(8192+200, nospecialmemory) {
@@ -569,15 +589,15 @@ resource rCString(8192+238, nospecialmemory) {
 };
 
 resource rCString(8192+239, nospecialmemory) {
-  "item not in correct mode"
+  "type should be LONGREAL"
 };
 
 resource rCString(8192+240, nospecialmemory) {
-  "dynamic array parameter expected"
+  "parameter should be dynamic array parameter"
 };
 
 resource rCString(8192+241, nospecialmemory) {
-  "illegal type for floating point operation"
+  "illegal type for floating point operation (implementation restriction)"
 };
 
 resource rCString(8192+286, nospecialmemory) {
@@ -591,11 +611,11 @@ resource rCString(8192+299, nospecialmemory) {
 /* Kate specific things */
 
 resource rCString(8192+300, nospecialmemory) {
-  "symbol is longer than is valid (255 characters)"
+  "symbol is longer than is valid (128 characters)"
 };
 
 resource rCString(8192+301, nospecialmemory) {
-  "literal string is greater then max string length (255 characters)"
+  "literal string is greater then max string length (128 characters)"
 };
 
 resource rCString(8192+304, nospecialmemory) {
@@ -666,12 +686,12 @@ resource rVersion(1, nospecialmemory) {
     01,     /* major revision */
     0,      /* minor revision */
     0,      /* bug   version */
-    release, /* stage */
-    0       /* non-final release */
+    development,   /* stage */
+    03      /* non-final release */
   },
   verAustralia,
   "ORCA/Modula-2",
-  "Copyright \$a9 1993 The Byteworks, EZ-Soft.  By Peter C. Easdown"
+  "Copyright \$a9 2007 The Byteworks.  By Peter C. Easdown"
 };
 
 resource rComment(2, nospecialmemory) {
@@ -727,8 +747,4 @@ resource rCString(8192+510, nospecialmemory) {
 
 resource rCString(8192+511, nospecialmemory) {
   "compiler directive not legal inside procedure scope"
-};
-
-resource rCString(8192+512, nospecialmemory) {
-  "comment without closing *)"
 };

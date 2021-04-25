@@ -214,10 +214,11 @@ VAR
     END LoadError;
 
   VAR 
-    buf:  CHAR;
-    col:  CARDINAL;
-    curr: l2w;
-    CO:   ConsoleOutDCB;
+    buf:        CHAR;
+    col:        CARDINAL;
+    curr:       l2w;
+    CO:         ConsoleOutDCB;
+    stopParms:  StopDCB;
   BEGIN
     IF userHasAborted OR terminalError THEN
       RETURN;
@@ -278,7 +279,20 @@ VAR
         CO.ch := bs;
         ConsoleOut(CO);
 
-        Read(buf);
+        REPEAT
+          (*
+            This will, cause the compiler to quit if the user hits apple-period
+            when the compiler is waiting for the user to "un-pause" an error
+            display.
+          *)
+          stopParms.pCount := 1;
+          Stop(stopParms);
+          userHasAborted := stopParms.stopFlag;
+
+          IF NOT userHasAborted THEN
+            BusyRead(buf);
+          END;
+        UNTIL userHasAborted OR (buf <> nul);
       END;
     END;
   END Mark;

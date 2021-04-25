@@ -29,6 +29,7 @@ FROM M2OMF IMPORT GenGlobalOp, PutByte, ReferenceLabel, PutLabelText,
    EndSegment, aSegmentKind, aSegmentAttribute, aSegmentAttributeSet,
    NewSegmentHeader, GenLocalOp, objFile, PutByteConstant,
    IncrementSegmentLength;
+FROM M2Sets IMPORT SCClearSet;
 FROM M2SM IMPORT
    Symbol, Mark, aDirective, aDirectiveSet, Directives;
 FROM Strings IMPORT Concat, Length;
@@ -61,6 +62,7 @@ VAR
   hightyp             : StrPtr;
   registers           : DRegSet;
   lockItem            : POINTER TO Item;
+  bitMask             : ARRAY [0..15] OF CARDINAL;   
 
 (*$RangeCheck-*)
 PROCEDURE Locked(reg: DRegister): BOOLEAN;
@@ -635,9 +637,10 @@ BEGIN
     | LCard :     val.D  := fval;                   (* V2.6 *)
     | Double :    val.D  := fval;                   (* V2.6 *)
     | Real :      val.R  := VAL(REAL, fval);        (* V2.6 *)
-    | Set :       val.FS.set[0] := VAL(BITSET, LoWORD(fval));
+    | Set :       val.FS.setSize := typ^.size;
+                  SCClearSet(val.FS);
+                  val.FS.set[0] := VAL(BITSET, LoWORD(fval));
                   val.FS.set[1] := VAL(BITSET, HighWORD(fval));
-                  val.FS.setSize := typ^.size;
     ELSE          val.D  := fval; (* String, etc.      V2.6 *)
     END;
   END (*WITH*);
@@ -1194,6 +1197,23 @@ BEGIN
 
   errorInProc := FALSE;
   dontLoseIndex := FALSE;
+
+  bitMask[0]  := 0000H;
+  bitMask[1]  := 0001H;
+  bitMask[2]  := 0003H;
+  bitMask[3]  := 0007H;
+  bitMask[4]  := 000FH;
+  bitMask[5]  := 001FH;
+  bitMask[6]  := 003FH;
+  bitMask[7]  := 007FH;
+  bitMask[8]  := 00FFH;
+  bitMask[9]  := 01FFH;
+  bitMask[10] := 03FFH;
+  bitMask[11] := 07FFH;
+  bitMask[12] := 0FFFH;
+  bitMask[13] := 1FFFH;
+  bitMask[14] := 3FFFH;
+  bitMask[15] := 7FFFH;
 END InitM2HM;
 
 PROCEDURE ConvertTyp(functyp : StrPtr; VAR x : Item);
@@ -1659,7 +1679,7 @@ BEGIN
         END;
       ELSIF mode = DregMd THEN
         IF indir THEN
-          GenNILCheck(reg, FALSE);
+          GenNILCheck(register, FALSE);
 
           IF indexed THEN
             LoadIndexTo(YReg, indexReg);
@@ -2237,12 +2257,12 @@ BEGIN
     ELSIF szx = long THEN
       CASE type OF
         left:
-          PutDPReference(ASL+DIRECT, x.adr+2, 2);
-          PutDPReference(ROL+DIRECT, x.adr, 2);
+          PutDPReference(ASL+DIRECT, x.adr, 2);
+          PutDPReference(ROL+DIRECT, x.adr+2, 2);
         |
         logLeft:
-          PutDPReference(ASL+DIRECT, x.adr+2, 2);
-          PutDPReference(ROL+DIRECT, x.adr, 2);
+          PutDPReference(ASL+DIRECT, x.adr, 2);
+          PutDPReference(ROL+DIRECT, x.adr+2, 2);
         |
         right:
           PutDPReference(LSR+DIRECT, x.adr+2, 2);
@@ -2767,9 +2787,30 @@ VAR
   signar:       BOOLEAN;
   reg:          DRegister;
   reg2:         DRegister;
+  reg3:         DRegister;
   sz:           CARDINAL;
   idx:          CARDINAL;
   z:            Item;
+  mask:         CARDINAL;
+  setsize:      CARDINAL;
+  wvu:          CARDINAL;
+  shortregs:    BOOLEAN;
+
+  PROCEDURE SetBitCount(typ:  StrPtr): CARDINAL;
+  BEGIN
+    WITH typ^.SBaseTyp^ DO
+      IF form = Enum THEN
+        RETURN NofConst;
+      ELSIF form = Range THEN
+        RETURN max - min + 1;
+      ELSIF form = Char THEN
+        RETURN 256;
+      ELSE (* bitset *)
+        RETURN 16;
+      END;
+    END (*WITH*);
+  END SetBitCount;
+
 BEGIN
   IF NOT errorInProc THEN
     Isz(x,szx);
@@ -2882,22 +2923,61 @@ BEGIN
         END;
       END;
     ELSE (* do an unsigned comparison *)
+      IF x.typ^.form = Set THEN
+        setsize := SetBitCount(x.typ);
+
+        IF ODD(x.typ^.size) THEN
+          mask := bitMask[setsize MOD 8];
+        ELSE
+          mask := bitMask[setsize MOD 16];
+        END;
+      ELSE
+        mask := 0;
+      END;
+
       IF y.mode = conMd THEN
         IF szx = byte THEN
           LoadVal(x, erCPU);
           wv := WordVal(y);
+
           ShortM;
-          PutDPReference(CMP+IMMEDIATE, wv, 2);
+
+          IF mask <> 0 THEN
+            wvu := VAL(CARDINAL, VAL(BITSET, wv) * VAL(BITSET, mask));
+            PutDPReference(And+IMMEDIATE, mask, 2);
+            PutDPReference(CMP+IMMEDIATE, wvu, 2);
+          ELSE
+            PutDPReference(CMP+IMMEDIATE, wv, 2);
+          END;
+
           LongM;
         ELSIF szx = word THEN
           LoadVal(x, erCPU);
           wv := WordVal(y);
-          PutDPReference(CMP+IMMEDIATE, wv, 3);
+
+          IF mask <> 0 THEN
+            wvu := VAL(CARDINAL, VAL(BITSET, wv) * VAL(BITSET, mask));
+            PutDPReference(And+IMMEDIATE, mask, 3);
+            PutDPReference(CMP+IMMEDIATE, wvu, 3);
+          ELSE
+            PutDPReference(CMP+IMMEDIATE, wv, 3);
+          END;
         ELSIF szx = long THEN
           LoadVal(x, erCPU);
           lv := LongVal(y);
+          wvu := HighWORD(lv);
+
+          IF mask <> 0 THEN
+            wvu := VAL(CARDINAL, VAL(BITSET, wvu) * VAL(BITSET, mask));
+            PutOp(TAY, 1);
+            PutOp(TXA, 1);
+            PutDPReference(And+IMMEDIATE, mask, 3);
+            PutOp(TAX, 1);
+            PutOp(TYA, 1);
+          END;
+
           newLink(skipLow);
-          PutDPReference(CPX+IMMEDIATE3, HighWORD(lv), 3);
+          PutDPReference(CPX+IMMEDIATE3, wvu, 3);
           PutLinkReference(BNE, skipLow, 2);
           PutDPReference(CMP+IMMEDIATE, LoWORD(lv), 3);
           FixLink(skipLow);
@@ -2933,11 +3013,22 @@ BEGIN
           *)
           IF ODD(sz) THEN
             DEC(sz);
+            wvu := VAL(CARDINAL, y.val.FS.set[idx]);
 
             ShortM;
             PutDPReference(LDY+IMMEDIATE3, sz, 3);
-            PutDPReference(LDA+IMMEDIATE, VAL(CARDINAL, y.val.FS.set[idx]), 2);
-            PutDPReference(CMP+DIRINDBYYLG, RegAdr(reg), 2);
+
+            IF mask <> 0 THEN
+              wvu := VAL(CARDINAL, VAL(BITSET, wvu) * VAL(BITSET, mask));
+              PutDPReference(LDA+DIRINDBYYLG, RegAdr(reg), 2);
+              PutDPReference(And+IMMEDIATE, mask, 2);
+              PutDPReference(CMP+IMMEDIATE, wvu, 2);
+              mask := 0;
+            ELSE
+              PutDPReference(LDA+IMMEDIATE, wvu, 2);
+              PutDPReference(CMP+DIRINDBYYLG, RegAdr(reg), 2);
+            END;
+
             LongM;
 
             PutLinkReference(BNE, skip2, 2);
@@ -2946,14 +3037,31 @@ BEGIN
           WHILE sz > 0 DO
             DEC(idx);
             DEC(sz, 2);
+            wvu := VAL(CARDINAL, y.val.FS.set[idx]);
 
             IF sz <> 0 THEN
-              PutDPReference(LDA+IMMEDIATE, VAL(CARDINAL, y.val.FS.set[idx]), 3);
               PutDPReference(LDY+IMMEDIATE3, sz, 3);
+            END;
+
+            IF mask <> 0 THEN
+              wvu := VAL(CARDINAL, VAL(BITSET, wvu) * VAL(BITSET, mask));
+
+              IF sz <> 0 THEN
+                PutDPReference(LDA+DIRINDBYYLG, RegAdr(reg), 2);
+              ELSE
+                PutDPReference(LDA+DIRINDLONG, RegAdr(reg), 2);
+              END;
+
+              PutDPReference(And+IMMEDIATE, mask, 3);
+              PutDPReference(CMP+IMMEDIATE, wvu, 3);
+              PutLinkReference(BNE, skip2, 2);
+              mask := 0;
+            ELSIF sz <> 0 THEN
+              PutDPReference(LDA+IMMEDIATE, wvu, 3);
               PutDPReference(CMP+DIRINDBYYLG, RegAdr(reg), 2);
               PutLinkReference(BNE, skip2, 2);
             ELSE
-              PutDPReference(LDA+IMMEDIATE, VAL(CARDINAL, y.val.FS.set[idx]), 3);
+              PutDPReference(LDA+IMMEDIATE, wvu, 3);
               PutDPReference(CMP+DIRINDLONG, RegAdr(reg), 2);
             END;
           END;
@@ -2966,15 +3074,58 @@ BEGIN
         IF szx = byte THEN
           LoadParameters(x, y, TRUE);
           ShortM;
-          PutDPReference(CMP+DIRECT, y.adr, 2);
+
+          IF mask <> 0 THEN
+            GetReg(word, reg);
+            PutDPReference(And+IMMEDIATE, mask, 2);
+            PutOp(TAY, 1);
+            PutDPReference(LDA+DIRECT, y.adr, 2);
+            PutDPReference(And+IMMEDIATE, mask, 2);
+            PutDPReference(STA+DIRECT, RegAdr(reg), 2);
+            PutOp(TYA, 1);
+            PutDPReference(CMP+DIRECT, RegAdr(reg), 2);
+            Unlock(reg)
+          ELSE
+            PutDPReference(CMP+DIRECT, y.adr, 2);
+          END;
+
           LongM;
         ELSIF szx = word THEN
           LoadParameters(x, y, TRUE);
-          PutDPReference(CMP+DIRECT, y.adr, 2);
+
+          IF mask <> 0 THEN
+            GetReg(word, reg);
+            PutDPReference(And+IMMEDIATE, mask, 3);
+            PutOp(TAY, 1);
+            PutDPReference(LDA+DIRECT, y.adr, 2);
+            PutDPReference(And+IMMEDIATE, mask, 3);
+            PutDPReference(STA+DIRECT, RegAdr(reg), 2);
+            PutOp(TYA, 1);
+            PutDPReference(CMP+DIRECT, RegAdr(reg), 2);
+            Unlock(reg);
+          ELSE
+            PutDPReference(CMP+DIRECT, y.adr, 2);
+          END;
         ELSIF szx = long THEN
           LoadParameters(x, y, TRUE);
           newLink(skipLow);
-          PutDPReference(CPX+DIRECT, y.adr+2, 2);
+
+          IF mask <> 0 THEN
+            GetReg(word, reg);
+            PutOp(TAY, 1);
+            PutOp(TXA, 1);
+            PutDPReference(And+IMMEDIATE, mask, 3);
+            PutOp(TAX, 1);
+            PutDPReference(LDA+DIRECT, y.adr+2, 2);
+            PutDPReference(And+IMMEDIATE, mask, 3);
+            PutDPReference(STA+DIRECT, RegAdr(reg), 2);
+            PutOp(TYA, 1);
+            PutDPReference(CPX+DIRECT, RegAdr(reg), 2);
+            Unlock(reg);
+          ELSE
+            PutDPReference(CPX+DIRECT, y.adr+2, 2);
+          END;
+
           PutLinkReference(BNE, skipLow, 2);
           PutDPReference(CMP+DIRECT, y.adr, 2);
           FixLink(skipLow);
@@ -3000,24 +3151,71 @@ BEGIN
           PutDPReference(STX+DIRECT, RegAdr(reg2)+2, 2);
           Unlock(erCPU);
 
-          PutDPReference(LDY+IMMEDIATE3,
-                         VAL(CARDINAL, x.typ^.size - VAL(aSize, 1)), 3);
-
-          ShortM;
-
           newLink(skip2);
+
+          shortregs := ODD(x.typ^.size);
+
+          IF shortregs THEN
+            PutDPReference(LDY+IMMEDIATE3,
+                           VAL(CARDINAL, x.typ^.size - VAL(aSize, 1)), 3);
+            ShortM;
+          ELSE
+            PutDPReference(LDY+IMMEDIATE3,
+                           VAL(CARDINAL, x.typ^.size - VAL(aSize, 2)), 3);
+          END;
+
+          IF mask <> 0 THEN
+            GetReg(word, reg3);
+
+            IF shortregs THEN
+              PutDPReference(LDA+DIRINDBYYLG, RegAdr(reg2), 2);
+              PutDPReference(And+IMMEDIATE, mask, 2);
+              PutDPReference(STA+DIRECT, RegAdr(reg3), 2);
+              PutDPReference(LDA+DIRINDBYYLG, RegAdr(reg), 2);
+              PutDPReference(And+IMMEDIATE, mask, 2);
+              PutDPReference(CMP+DIRECT, RegAdr(reg3), 2);
+              PutLinkReference(BNE, skip2, 2);
+            ELSE
+              PutDPReference(LDA+DIRINDBYYLG, RegAdr(reg2), 2);
+              PutDPReference(And+IMMEDIATE, mask, 3);
+              PutDPReference(STA+DIRECT, RegAdr(reg3), 2);
+              PutDPReference(LDA+DIRINDBYYLG, RegAdr(reg), 2);
+              PutDPReference(And+IMMEDIATE, mask, 3);
+              PutDPReference(CMP+DIRECT, RegAdr(reg3), 2);
+              PutLinkReference(BNE, skip2, 2);
+              PutOp(DEY, 1);
+            END;
+
+            PutOp(DEY, 1);
+            Unlock(reg3);
+          END;
+
           newLink(loop);
 
           FixLink(loop);
           PutDPReference(LDA+DIRINDBYYLG, RegAdr(reg), 2);
           PutDPReference(CMP+DIRINDBYYLG, RegAdr(reg2), 2);
           PutLinkReference(BNE, skip2, 2);
+
+          IF NOT shortregs THEN
+            PutOp(DEY, 1);
+          END;
+
           PutOp(DEY, 1);
           PutLinkReference(BPL, loop, 2);
-          PutDPReference(LDA+IMMEDIATE, 0, 2); (* force p register to say EQUAL! *)
+
+          IF shortregs THEN
+            PutDPReference(LDA+IMMEDIATE, 0, 2); (* force p register to say EQUAL! *)
+          ELSE
+            PutDPReference(LDA+IMMEDIATE, 0, 3); (* force p register to say EQUAL! *)
+          END;
+
           FixLink(skip2);
 
-          LongM;
+          IF shortregs THEN
+            LongM;
+          END;
+
           Unlock(reg);
           Unlock(reg2);
         END;
@@ -3454,10 +3652,14 @@ BEGIN
     IF y.mode = conMd THEN
       lv := LongVal(y);
 
+      (*$OverflowCheck-*)
+
       IF lv < VAL(LONGINT, 0) THEN
         SetconMd(y, -lv, y.typ);
         op := NOT Add;
       END;
+
+      (*$OverflowCheck+*)
     END;
 
     ADD2(op, x, y);
@@ -3479,10 +3681,14 @@ BEGIN
     IF y.mode = conMd THEN
       lv := LongVal(y);
 
+      (*$OverflowCheck-*)
+
       IF lv < VAL(LONGINT, 0) THEN
         SetconMd(y, -lv, y.typ);
         op := Add;
       END;
+
+      (*$OverflowCheck+*)
     END;
 
     ADD2(op, x, y);
@@ -3822,7 +4028,9 @@ BEGIN
 
     (* Note : overflow-checks must be OFF for compiler! *)
     (* recover original value of x : *)
+    (*$OverflowCheck-*)
     Normalize(x, - min);
+    (*$OverflowCheck+*)
 
     x.typ := htyp; (* recover type of x *)
   END;
@@ -4458,6 +4666,14 @@ BEGIN
   Release(x);
 END CallInd;
 
+PROCEDURE FixBReg;
+BEGIN
+  GenGlobalOp(PEA, '~__Globals', 0, -8, 2);
+  AddBytesToObjectFile(3);
+  PutOp(PLB, 1);
+  PutOp(PLB, 1);
+END FixBReg;
+
 PROCEDURE ExitModule;
 (*
   OPERATION:
@@ -4471,6 +4687,12 @@ PROCEDURE ExitModule;
 BEGIN
   IF (CDA IN Directives) OR
      (NDA IN Directives) THEN
+    IF CDA IN Directives THEN
+      FixBReg;
+      GenGlobalOp(JSL, '~CDASHUTDOWN', 0, 0, 3);
+      AddBytesToObjectFile(4);
+    END;
+
     PutOp(PLB, 1);
     PutOp(W65C816.RTL, 1);
   ELSIF NOT (CDEV IN Directives) THEN
@@ -4544,14 +4766,6 @@ VAR
 
     AddBytesToObjectFile(4);
   END PutAdr;
-
-  PROCEDURE FixBReg;
-  BEGIN
-    GenGlobalOp(PEA, '~__Globals', 0, -8, 2);
-    AddBytesToObjectFile(3);
-    PutOp(PLB, 1);
-    PutOp(PLB, 1);
-  END FixBReg;
 
   PROCEDURE PutJMPAdr(id: CARDINAL);
   VAR
@@ -4649,8 +4863,6 @@ BEGIN
         Use the ORCA routine ~DAID to set up or initialise the NDA User ID.
       *)
       PutOp(PHA, 1);
-      GenGlobalOp(JSL, '~DAID', 0, 0, 3);
-      AddBytesToObjectFile(4);
     ELSE
       (*
         Use the ORCA routine ~DAID to set up or initialise the CDA User ID.
@@ -4658,14 +4870,20 @@ BEGIN
         A non zero flag value causes the User ID to be initialised.
       *)
       PutDPReference(PEA, 0FFFFH, 3);
-      GenGlobalOp(JSL, '~DAID', 0, 0, 3);
-      AddBytesToObjectFile(4);
     END;
+
+    GenGlobalOp(JSL, '~DAID', 0, 0, 3);
+    AddBytesToObjectFile(4);
 
     PutFixUserID;
 
     PutOp(PHB, 1);
     FixBReg;
+
+    IF CDA IN Directives THEN
+      GenGlobalOp(JSL, '~CDASTART', 0, 0, 3);
+      AddBytesToObjectFile(4);
+    END;
   ELSIF CDEV IN Directives THEN
     newLink(entry);
 
@@ -4984,7 +5202,7 @@ BEGIN
   IF NOT errorInProc THEN
     IF (y.mode = stkMd) AND
        (NOT y.indir) THEN
-      IF x.mode = conMd THEN
+      IF (x.mode = conMd) AND (x.typ^.form = Set) THEN
         (* we must allow for the moving of a large set to the stack *)
         szx := sz;
         idx := (szx DIV 2);
@@ -5008,10 +5226,13 @@ BEGIN
         END;
 
         INC(stackPointer, sz);
+        SetstkMd(y, y.typ);  (* to update the stack address of 'y' *)
       ELSIF (x.mode <> stkMd) OR
             ((x.mode = stkMd) AND ((x.adr <> stackPointer) OR x.notpop)) THEN
         intSize := VAL(INTEGER, sz);
+        (*$OverflowCheck-*)
         StackTop(-intSize);        (* allocate space on the stack for the block *)
+        (*$OverflowCheck+*)
 
         GetReg(word, reg);
         loc := RegAdr(reg);

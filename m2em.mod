@@ -3,10 +3,11 @@
 (*$OverflowCheck+*)
 IMPLEMENTATION MODULE M2EM; (* Hermann Seiler 19.2.86 / 10.6.86 / 28.4.89 *)
 
+FROM M2Lib IMPORT aTerminateStatus;
 FROM M2DM IMPORT
         ObjPtr, StrPtr, ParPtr, PDPtr, KeyPtr,
         ObjClass, StrForm, Standard, ConstValue, PDesc,
-        Structure, aAdr, aSize,
+        Structure, aAdr, aSize, nilchk,
         notyp, undftyp, booltyp, chartyp, cardtyp, cardinttyp,
         inttyp, bitstyp, lcardtyp, dbltyp, realtyp, lrltyp,
         proctyp, stringtyp, addrtyp, wordtyp, bytetyp,
@@ -16,9 +17,9 @@ FROM M2SM IMPORT
 FROM M2HM IMPORT
         byte, word, long, quad, StackTop, stackPointer,
         Condition, Release, PushAdr, DRegister, dontLoseIndex,
-        WidType, ItemMode, ItSet, Item, curLev,
+        WidType, ItemMode, ItSet, Item, curLev, GenTerminate,
         LongVal, WordVal, SimpleC, SignedT, SimpleT, RealT,
-        Isz, SetregMd, SetconMd, SetglbMd, SetstkMd,
+        Isz, SetregMd, SetconMd, SetglbMd, SetstkMd, SetDregMd,
         InvertCC, GenHalt, Branch, PushVal, 
         LoadAdr, LoadD, LoadX, Move, MoveAdr,
         Neg1, Abs1, Cap1, Tst1, Com1, Inc1, Dec1,
@@ -30,7 +31,8 @@ FROM M2HM IMPORT
 FROM M2FM IMPORT
         FMonad, FDyad;
 FROM M2LM IMPORT AddBytesToObjectFile, FixLink, MergedLinks, PutOp,
-        PutDPReference, PutLongReference,  PutLinkReference, newLink;
+        PutDPReference, PutLongReference,  PutLinkReference, newLink,
+        PutStackReference;
 FROM M2Sets IMPORT SCEqual, SCLessEqual, SCSlash, SCTimes, SCPlus, SCMinus,
         SCClearSet, SCSetBit, SCSetBitRange, SCIn, SCComplementSet;
 FROM M2TM IMPORT Find;
@@ -39,7 +41,8 @@ FROM SYSTEM IMPORT
         WORD, ADR, SHIFT;
 FROM W65C816 IMPORT JSL, PEA, SEP, REP, LDA, IMMEDIATE, IMMEDIATE3, PHA,
         TAY, LSR, STA, DIRECT, TSC, CLC, ADC, TAX, TYA, And, CPY, DEY, BEQ,
-        ASL, BNE, ABSLONGBYX, STX, TXA, CPX, DEX, DIRINDBYYLG, LDY, PHY, INCACC;
+        ASL, BNE, ABSLONGBYX, STX, TXA, CPX, DEX, DIRINDBYYLG, LDY, PHY, INCACC,
+        DIRINDLONG, PLA, ORA, PLX, STKRELATIVE;
 
 VAR
   mask   :  ARRAY [ 0 .. 32 ] OF LONGINT;
@@ -121,11 +124,8 @@ BEGIN
 END setCC;
 
 PROCEDURE SetBaseLimits(VAR x : Item; VAR lo, hi : INTEGER);
-VAR
-  sz:     WidType;
 BEGIN
   (* x.typ^.form = Set *)
-  Isz(x, sz); (* take width of set before type is changed *)
 
   WITH x DO
     typ := typ^.SBaseTyp;
@@ -522,6 +522,7 @@ VAR
   loop:       CARDINAL;
   endOfLoop:  CARDINAL;
   xadr:       DRegister;
+  savexadr:   aAdr;
 
 BEGIN (* x.typ^.form = Set *)
   SRTest(e);
@@ -555,57 +556,7 @@ BEGIN (* x.typ^.form = Set *)
         Mark(202);
       END
     ELSE (* e is expression *)
-      WITH y DO
-        typ := s;
-        mode  := conMd;
-
-        val.FS.setSize := s^.size;
-        SCClearSet(val.FS);
-        SCSetBit(val.FS, 0);
-      END;
-
-      x.typ := s;
-
-      Move(y,x);
-      LoadX(e,word);
-      e.typ := inttyp;                                              (* V2.6 *)
-      CheckRange(e,lo,hi,0);
-
-      IF szx < quad THEN
-        Shi2(x, e, left);
-      ELSE
-        GetReg(long, xadr);
-        LoadAdr(x);
-        PutDPReference(STA+DIRECT, RegAdr(xadr), 2);
-        PutDPReference(STX+DIRECT, RegAdr(xadr)+2, 2);
-        Unlock(erCPU);
-
-        LoadVal(e, erCPU);
-        PutOp(TAX, 1);
-        PutOp(LSR+IMMEDIATE, 1); (* div by  2 *)
-        PutOp(LSR+IMMEDIATE, 1); (* div by  4 *)
-        PutOp(LSR+IMMEDIATE, 1); (* div by  8 *)
-        PutOp(TAY, 1);
-        PutOp(TXA, 1);
-        PutDPReference(And+IMMEDIATE, 07H, 3); (* mod by 8 *)
-        PutOp(TAX, 1);
-        PutDPReference(LDA+IMMEDIATE, 1, 3);
-
-        newLink(loop);
-        newLink(endOfLoop);
-
-        PutDPReference(CPX+IMMEDIATE3, 0, 3);
-        PutLinkReference(BEQ, endOfLoop, 2);
-        FixLink(loop);
-        PutOp(ASL+IMMEDIATE, 1);
-        PutOp(DEX, 1);
-        PutLinkReference(BNE, loop, 2);
-        FixLink(endOfLoop);
-        PutDPReference(SEP, 20H, 2);  (* Short accumulator and memory *)
-        PutDPReference(STA+DIRINDBYYLG, RegAdr(xadr), 2);
-        PutDPReference(REP, 20H, 2);  (* Long accumulator and memory *)
-        Unlock(xadr);
-      END;
+      Mark(418);
     END;
   ELSE
     Mark(116);
@@ -651,37 +602,7 @@ BEGIN (* x.typ^.form = Set *)
         Mark(202);
       END
     ELSE
-      (* variable set-constructor : *)
-
-      IF szx < quad THEN
-        SetconMd(y, MIN(LONGINT), dbltyp);
-        LoadD(x);
-        Move(y, x);
-
-        LoadX(e2,word); 
-        e2.typ := inttyp;                             (* V2.6 *)
-        CheckRange(e2,lo,hi,0);
-        LoadX(e1, word); e1.typ := inttyp;
-        Sub2(e2, e1);
-        Inc1(e2);
-        CheckClimit(e2, VAL(LONGINT, hi-lo));
-        SetconMd(y, x.typ^.size, inttyp);
-        LoadD(y);
-        Sub2(y,e2);
-        Shi2(x, y, right); 
-        Shi2(x, e1, left);
-        Release(y);
-        x.typ := s;   (* restore original type of set *)
-      ELSE
-        (* SetBitRange(ADR(set), SIZE(set), firstbit, lastbit) *)
-        PushAdr(x);
-        PutDPReference(PEA, VAL(CARDINAL, x.typ^.size), 3);
-        LoadX(e1, word);
-        PushVal(e1);
-        LoadX(e2, word);
-        PushVal(e2);
-        GenGlobalOp(JSL, 'M2Lib_SetBitRange', 0, 0, 3);
-      END;
+      Mark(417);
     END;
   ELSE
     Mark(116);
@@ -1315,6 +1236,9 @@ VAR
   par:        ParPtr;
 
   PROCEDURE FirstParam;
+  VAR
+    reg:    DRegister;
+    notNIL: CARDINAL;
   BEGIN
     WITH x DO
       restyp := p.proc^.typ;
@@ -1802,10 +1726,34 @@ VAR
                 Mark(307);
               ELSE
                 PushAdr(x);
+
+                IF nilchk AND (function = New) THEN
+                  PutStackReference(LDA+STKRELATIVE, 3);
+                  PutOp(PHA, 1);
+                  PutStackReference(LDA+STKRELATIVE, 3);
+                  PutOp(PHA, 1);
+                END;
+
                 SetconMd(z, typ^.PBaseTyp^.size, cardtyp);
                 PushVal(z);
                 CallExt(obj);
                 DEC(stackPointer, 6);
+
+                IF nilchk AND (function = New) THEN
+                  newLink(notNIL);
+                  GetReg(long, reg);
+                  PutOp(PLA, 1);
+                  PutOp(PLX, 1);
+                  PutDPReference(STA+DIRECT, RegAdr(reg), 2);
+                  PutDPReference(STX+DIRECT, RegAdr(reg)+2, 2);
+                  PutDPReference(LDY+IMMEDIATE3, 2, 3);
+                  PutDPReference(LDA+DIRINDLONG, RegAdr(reg), 2);
+                  PutDPReference(ORA+DIRINDBYYLG, RegAdr(reg), 2);
+                  PutLinkReference(BNE, notNIL, 2);
+                  GenTerminate(tsOutOfMemory);
+                  FixLink(notNIL);
+                  Unlock(reg);
+                END;
               END;
             ELSE
               Mark(307);

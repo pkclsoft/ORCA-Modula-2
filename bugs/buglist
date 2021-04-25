@@ -1,0 +1,154 @@
+Bug:      001
+File:     Bug001.MOD
+Status:   Fixed, awaiting verification and closure.
+
+Details:  The NILCheck directive should check after each call to NEW to
+          make sure the  memory was actually allocated, aborting if not.
+
+------------------------------------------------------------------------------
+Bug:      002
+File:     Bug001.MOD will generate an error, as an indication.
+Status:   Fixed, awaiting verification and closure.
+ 
+Details:  When the program aborts with a run-time error, it should use the
+          established error reporting mechanism to report the error.
+
+          This has been fixed, but requires a change to SysLib.
+
+------------------------------------------------------------------------------
+Bug:      003
+File:     
+Status:   Closed
+
+Details:  I/O seems to be messed up, but it is only showing up on some systems.
+
+------------------------------------------------------------------------------
+Bug:      004
+File:     
+Status:   Fixed, awaiting verification and closure.
+
+Details:  Command-. dies not stop the compiler in all circumstances.
+
+          The problem was that when the compiler paused at an error, the
+          use of Command-. did not abort the compiler.
+
+------------------------------------------------------------------------------
+Bug:      005
+File:     
+Status:   Closed
+
+Details:  Set unions can give incorrect results.
+
+          As a result of this problem, Kate has been modified to ensure
+          that only constants are used in set constructors.
+
+------------------------------------------------------------------------------
+Bug:      006
+File:     Bug006.Def, Bug006.Mod
+Status:   Fixed, awaiting verification and closure.
+
+Details:  Incorrect errors are generated when an export qualified type is
+          used in a pointer declaration.
+
+------------------------------------------------------------------------------
+Bug:      007
+File:     Bug007.Mod
+Status:   Fixed, awaiting verification and closure.
+
+Details:  CDA's can't be created and called as per the specification in the
+          Desk Manager documentation.
+
+          I provided my own routines within Terminal to check for, and read
+          a keypress.  They work fine with the CDA driver, graphics mode, and 
+          normal text applications.
+
+------------------------------------------------------------------------------
+Bug:      008
+File:     Bug008.Mod
+Status:   Nothing to be done - see below.
+
+Details:  Range checking should cause a run-time error when a value exceeds
+          an integer subrange.  It apparently does not do this in all cases.
+
+          This is actually working, but Bug 002 stopped you from knowing.
+
+------------------------------------------------------------------------------
+Bug:      009
+File:     
+Status:   Closed
+
+Details:  A run-time error should occur, or an error value should be
+          returned by the procedure, when you try to read from an unopened
+          file.
+
+------------------------------------------------------------------------------
+Bug:      010
+File:     Bug010.Mod
+Status:   Done.
+
+Details:  The compiler can flag an apparently unneeded error and hang.
+
+          This is actually a repeat of number 005.  The error that Kate was
+          hitting was around the SET bug described in 005.  The fact that
+          it hung was probably an intermittent thing.  In any case you won't
+          have this problem with v1.1.
+
+          I do recall a problem that I fixed relating to the indirect
+          access to an object.  This caused the compiler to crash/hang most
+          of the time.  I found it while looking at one of the set bugs,
+          and fixed it then.  It wasn't actually related to sets at all.
+      
+------------------------------------------------------------------------------
+Bug:      011
+File:     Bug011.Mod
+Status:   Fixed, awaiting verification and closure.
+
+Details:  ReadLongInt fails.
+
+          Changed to use NumberConversion.StringToLongInt.
+
+------------------------------------------------------------------------------
+Bug:      012
+File:     Bug012.Mod
+Status:   Fixed, awaiting verification and closure.
+
+Details:  Compiling a FOR loop with a 0 step size causes the compiler to crash.
+
+          The compiler simply wasn't setting it's environment up after the
+          error to allow it to continue processing.
+
+------------------------------------------------------------------------------
+Bug:      013
+File:     Bug013.Mod
+Status:   Fixed, awaiting verification and closure.
+
+Details:  When a string constant is passed as a parameter for a fixed
+          length string, the generated code is not correct.
+
+------------------------------------------------------------------------------
+Bug:      014
+File:     Bug014.Mod
+Status:   Nothing to be done.
+
+Details:  INC can fail when used to increment a subrange of characters
+ 
+          The INC PROCEDURE was being misused.
+
+------------------------------------------------------------------------------
+Bug:      015
+File:     Bug015.Mod
+Status:   Fixed, awaiting verification and closure.
+
+Details:  EZStartGraph does not remap text I/O to the graphics screen.
+
+          Calls to SysGraphTextStartup and SysGraphTextShutdown are now made.
+
+------------------------------------------------------------------------------
+Bug:      016
+File:     
+Status:   Not fixed.
+
+Details:  M2Debug has a problem with recursive records.
+
+------------------------------------------------------------------------------
+

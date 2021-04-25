@@ -230,7 +230,8 @@ BEGIN
                END;
   
   | Set :      IF x.typ = y.typ THEN 
-                 IF x.typ^.size <= VAL(aSize, 4) THEN
+                 IF (x.typ^.size <= VAL(aSize, 4)) AND
+                    (x.typ^.size <> VAL(aSize, 3)) THEN
                    Move(y,x);
                  ELSE
                    MoveBlock(y, x, x.typ^.size, FALSE);
@@ -1009,7 +1010,7 @@ END GenCase3;
 PROCEDURE GenFor1(v: Item; VAR e1: Item);
 BEGIN
   SRTest(v);
-  IF (v.typ^.form = Undef) OR (v.typ^.form > Enum) THEN
+  IF (v.typ^.form = Undef) OR (v.typ^.form > Enum) OR v.isParam THEN
     Mark(142);  (* illegal type of control variable *)
   END;
 END GenFor1;
@@ -1077,6 +1078,7 @@ BEGIN
     END;
   ELSE
     Mark(141);  (* step in FOR clause cannot be 0 *)
+    c := GT;
   END;
 
   newLink(l1);   (* l1 is the label placed just after the for loop *)

@@ -757,7 +757,7 @@ BEGIN
         Mark(209);
       END
     ELSIF btyp^.form = Range THEN
-      numEle := btyp^.max;
+      numEle := btyp^.max - btyp^.min + 1;
 
       IF (btyp^.min < 0) OR (numEle > MaxSetElements) THEN 
         Mark(209);
@@ -780,6 +780,8 @@ BEGIN
     IF sym = ident THEN qualident(obj);
       IF obj = NIL THEN typ^.BaseId := id; KeepId (*forward ref*)
       ELSIF obj^.class = Typ THEN typ^.PBaseTyp := obj^.typ
+      ELSIF obj^.class = Temp THEN
+        typ^.BaseId := id; KeepId; (* forward ref to exported type *)
       ELSE Mark(52)
       END
     ELSE Type(typ^.PBaseTyp)
@@ -945,12 +947,12 @@ PROCEDURE Element(VAR x: Item);
 VAR
   e1, e2: Item;
 BEGIN 
-  Expression(e1); 
+  ConstExpression(e1); 
   GenVal(e1);                                    (* V2.6 *)
 
   IF sym = ellipsis THEN
     GetSym; 
-    Expression(e2); 
+    ConstExpression(e2); 
     GenVal(e2);                              (* V2.6 *)
     GenSet(x, e1, e2);
   ELSE 
@@ -2762,7 +2764,7 @@ BEGIN
 
   IF ShowProgress THEN
 (*  WriteString(processor); *)
-    WriteString("ORCA/Modula-2 1.0");
+    WriteString("ORCA/Modula-2 1.1.0d3");
     WriteLn;
     WriteString("Copyright 1993, Peter Easdown");
     WriteLn;
