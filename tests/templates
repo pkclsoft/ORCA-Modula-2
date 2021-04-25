@@ -1,0 +1,211 @@
+_START HeaderObj
+name WORD
+typ LONG
+left LONG
+right LONG
+next LONG
+exported WORD
+parent LONG
+class BYTE
+kind BYTE
+last LONG
+heap LONG
+withadr WORD
+_END
+
+_START ConstObj
+name WORD
+typ LONG
+left LONG
+right LONG
+next LONG
+exported WORD
+parent LONG
+class BYTE
+strChar WORD
+modNo WORD
+D0 WORD
+D1 WORD
+D2 WORD
+D3 WORD
+_END
+
+_START TypObj
+name WORD
+typ LONG
+left LONG
+right LONG
+next LONG
+exported WORD
+parent LONG
+class BYTE
+mod LONG
+_END
+
+_START VarObj
+name WORD
+typ LONG
+left LONG
+right LONG
+next LONG
+exported WORD
+parent LONG
+class BYTE
+varpar WORD
+vmod WORD
+vlev WORD
+vadr WORD
+_END
+
+_START FieldObj
+name WORD
+typ LONG
+left LONG
+right LONG
+next LONG
+exported WORD
+parent LONG
+class BYTE
+offset WORD
+_END
+
+_START ProcObj
+name WORD
+typ LONG
+left LONG
+right LONG
+next LONG
+exported WORD
+parent LONG
+class BYTE
+pd LONG
+firstParam LONG
+firstLocal LONG
+pmod WORD
+_END
+
+_START ToolObj
+name WORD
+typ LONG
+left LONG
+right LONG
+next LONG
+exported WORD
+parent LONG
+class BYTE
+cd LONG
+firstArg LONG
+std BYTE
+cnum WORD
+GSOSproc WORD
+_END
+
+_START ModuleObj
+name WORD
+typ LONG
+left LONG
+right LONG
+next LONG
+exported WORD
+parent LONG
+class BYTE
+key LONG
+firstObj LONG
+root LONG
+modno WORD
+isInt WORD
+_END
+
+_START Object
+name WORD
+typ LONG
+left LONG
+right LONG
+next LONG
+exported WORD
+parent LONG
+class BYTE
+_END
+
+_START Structure
+strobj LONG
+size WORD
+ref WORD
+form BYTE
+pointer LONG
+word1 WORD
+word2 WORD
+word3 WORD
+_END
+
+_START Parm
+name WORD
+varpar WORD
+typ LONG
+next LONG
+_END
+
+_START Variable
+typ LONG
+mode BYTE
+mod WORD
+lev WORD
+adr WORD
+off WORD
+wid BYTE
+indir WORD
+name WORD
+indexed WORD
+indexReg BYTE
+register BYTE
+notpop WORD
+parent LONG
+_END
+
+_START Constant
+typ LONG
+mode BYTE
+strChar WORD
+modNo WORD
+D0 WORD
+D1 WORD
+D2 WORD
+D3 WORD
+_END
+
+_START Procedure
+typ LONG
+mode BYTE
+proc LONG
+stkPtr WORD
+_END
+
+_START Process
+stackTop WORD
+stackBottom WORD
+SRegister WORD
+DRegister WORD
+progCounter LONG
+stackFrame WORD
+display WORD 10
+activated WORD
+_END
+
+_START textPort
+ch BYTE
+cv BYTE
+windLeft BYTE
+windTop BYTE
+windRight BYTE
+windBottom BYTE
+windWidth BYTE
+windLength BYTE
+consWrap BYTE
+consAdvance BYTE
+consLF BYTE
+consScroll BYTE
+consVideo BYTE
+consDLE BYTE
+consMouse BYTE
+consFill BYTE
+_END

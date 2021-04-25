@@ -1,7 +1,7 @@
 asm asm/m2lib.asm keep=obj/$
 asm asm/storage.asm keep=obj/$
 
-makelib -l m2lib -r obj/m2lib.a obj/storage.a
+buildlib
 
 rm 13/m2lib
 move m2lib 13/

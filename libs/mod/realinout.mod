@@ -2,7 +2,7 @@
 IMPLEMENTATION MODULE RealInOut;
 
   FROM InOut IMPORT
-    termCh, Read, ReadString, Write, WriteString, WriteLn;
+    termCh, Read, ReadString, Write, WriteString, WriteLn, WriteHex;
 
   FROM RealConversions IMPORT
     LongRealToString, StringToLongReal;
@@ -94,5 +94,17 @@ IMPLEMENTATION MODULE RealInOut;
     WriteOct(u.arr[3], 6); Write(" ");
     Done := TRUE;
   END WriteLongRealOct;
+
+  PROCEDURE WriteLongRealHEX(x: LONGREAL);
+    VAR
+      u: LongReal;
+  BEGIN
+    u.R := x;
+    WriteHex(u.arr[0], 4); Write(" ");
+    WriteHex(u.arr[1], 4); Write(" ");
+    WriteHex(u.arr[2], 4); Write(" ");
+    WriteHex(u.arr[3], 4); Write(" ");
+    Done := TRUE;
+  END WriteLongRealHEX;
 
 END RealInOut.

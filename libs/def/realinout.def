@@ -65,5 +65,13 @@ PROCEDURE WriteLongRealOct(x: LONGREAL);
      x       number to write,
 *)
 
+PROCEDURE WriteLongRealHEX(x: LONGREAL);
+(*
+  OPERATION:
+    Write a REAL to terminal, as four words in hex form
+
+     x       number to write,
+*)
+
 END RealInOut.
  

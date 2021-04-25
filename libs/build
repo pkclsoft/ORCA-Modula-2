@@ -109,16 +109,6 @@ asm asm/mathlib.asm     keep=obj/$
 asm asm/mathlib0.asm    keep=obj/$
 asm asm/longmath.asm    keep=obj/$
 
-makelib -l m2lib -r obj/consoleio.a obj/ezdump.a obj/filesystem.a 
-makelib -l m2lib -r obj/gsosinterfa.a obj/inout.a obj/ezstorage.a
-makelib -l m2lib -r obj/terminal.a obj/mathlib.a obj/strings.a
-makelib -l m2lib -r obj/common.a obj/mathlib0.a obj/longmath.a
-
-makelib -l m2lib -r obj/numberconve.a obj/ezfilesyste.a obj/ezpaths.a
-makelib -l m2lib -r obj/fastfilesys.a obj/ezcommandli.a obj/superread.a
-makelib -l m2lib -r obj/realconvers.a obj/realinout.a obj/eztools.a
-makelib -l m2lib -r obj/lists.a obj/listutility.a obj/ezstrings.a
-
 echo "Now update the key of M2Lib.ASM and Storage.ASM, and execute build2."
 show time>>timefile
 

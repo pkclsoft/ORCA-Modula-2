@@ -1,0 +1,7 @@
+DEFINITION MODULE TestDebug2;
+
+PROCEDURE Proc1;
+
+PROCEDURE Proc2;
+
+END TestDebug2.

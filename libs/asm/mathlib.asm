@@ -25,7 +25,7 @@
     OBJCASE ON
     DATACHK OFF
 
-    MCOPY asm/mathlib.macros
+    MCOPY mathlib.macros
     COPY 13/ainclude/e16.sane
 *
 * Dummy is a tacky way of forcing all of the routines into the .A file. The ORCA
@@ -33,7 +33,7 @@
 * into the .A file.
 *
 Dummy     start
-          end
+          end Dummy
 
 *******************************
 *                             *

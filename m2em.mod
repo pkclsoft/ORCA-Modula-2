@@ -3,6 +3,8 @@
 (*$OverflowCheck+*)
 IMPLEMENTATION MODULE M2EM; (* Hermann Seiler 19.2.86 / 10.6.86 / 28.4.89 *)
 
+FROM InOut IMPORT WriteString, Write, WriteLn, WriteCard, WriteHex,
+    WriteLongInt, WriteLongReal;
 FROM M2Lib IMPORT aTerminateStatus;
 FROM M2DM IMPORT
         ObjPtr, StrPtr, ParPtr, PDPtr, KeyPtr,
@@ -1359,12 +1361,15 @@ VAR
                   | Int  :    val.I  := MaxInt;
                   | Enum :    val.Ch := VAL(CHAR, typ^.NofConst-1); (* V2.6 *)
                   | LCard :   val.D  := -1;
-                  | Double :  val.D  := 07FFFFFFFH;
-                  | Real :    val.R  := VAL(REAL, 07F7FFFFFH);
-                  | LongReal: val.D3 := 07FEFH;
+                  | Double :  val.D  := 07FFFFFFEH;
+                  | Real :    val.R  := VAL(REAL, 07F7FFFFEH);
+                  | LongReal: 
+
+  WriteString("getting max of longreal"); WriteLn;
+                              val.D3 := 07FEFH;
                               val.D2 := 0FFFFH;
                               val.D1 := 0FFFFH;
-                              val.D0 := 0FFFFH;
+                              val.D0 := 0FFFEH;
                   | Range :   SetconMd(x, typ^.max, typ^.RBaseTyp);
                   ELSE
                     Mark(144); SetconMd(x, 0, undftyp);
@@ -1383,11 +1388,11 @@ VAR
                   | Enum :    val.Ch := 0C;
                   | LCard :   val.D  := 0;
                   | Double :  val.D  := MIN(LONGINT);
-                  | Real :    val.R  := VAL(REAL, 0FF7FFFFFH);
+                  | Real :    val.R  := VAL(REAL, 0FF7FFFFEH);
                   | LongReal: val.D3 := 0FFEFH;
                               val.D2 := 0FFFFH;
                               val.D1 := 0FFFFH;
-                              val.D0 := 0FFFFH;
+                              val.D0 := 0FFFEH;
                   | Range :   SetconMd(x, typ^.min, typ^.RBaseTyp);
                   ELSE
                     Mark(144); SetconMd(x, 0, undftyp);
