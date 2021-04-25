@@ -1,4 +1,3 @@
-show time>timefile
 unset exit
 exists 13/m2defs
 if {status} == 0
@@ -27,10 +26,7 @@ asm def/filesystem.def
 asm def/ezfilesyste.def
 asm def/inout.def
 asm def/integermath.def
-asm def/m2lib.def modula2=(-k)
-echo -n "Make a note of the key please and press RETURN: "
-input waitvar
-unset waitvar
+asm def/m2lib.def modula2=(-k) > m2lib.key
 asm def/ezdump.def
 asm def/notesynthes.def
 asm def/numberconve.def
@@ -39,10 +35,7 @@ asm def/realinout.def
 asm def/scheduler.def
 asm def/soundmanage.def
 asm def/ezstorage.def
-asm def/storage.def modula2=(-k)
-echo -n "Make a note of the key please and press RETURN: "
-input waitvar
-unset waitvar
+asm def/storage.def modula2=(-k) > storage.key
 asm def/strings.def
 asm def/terminal.def
 asm def/w65c816.def
@@ -78,8 +71,6 @@ asm def/lists.def
 asm def/listutility.def
 asm def/ezstrings.def
 asm def/superread.def
-
-move =.sym 13/m2defs
 
 delete obj/=.a obj/=.root
 
@@ -120,5 +111,5 @@ makelib -l m2lib -r obj/realconvers.a obj/realinout.a obj/eztools.a
 makelib -l m2lib -r obj/lists.a obj/listutility.a obj/ezstrings.a
 
 echo "Now update the key of M2Lib.ASM and Storage.ASM, and execute build2."
-show time>>timefile
-
+echo "To do this, back in a macOS terminal window, execute the fixasmkeys.sh"
+echo "script."
