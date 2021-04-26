@@ -23,7 +23,7 @@
 * into the .A file.
 *
 Dummy     start
-          end
+          end Dummy
 
 *
 * Storage_ALLOCATE
