@@ -3,8 +3,6 @@
 (*$OverflowCheck+*)
 IMPLEMENTATION MODULE M2EM; (* Hermann Seiler 19.2.86 / 10.6.86 / 28.4.89 *)
 
-FROM InOut IMPORT WriteString, Write, WriteLn, WriteCard, WriteHex,
-    WriteLongInt, WriteLongReal;
 FROM M2Lib IMPORT aTerminateStatus;
 FROM M2DM IMPORT
         ObjPtr, StrPtr, ParPtr, PDPtr, KeyPtr,
@@ -1363,10 +1361,7 @@ VAR
                   | LCard :   val.D  := -1;
                   | Double :  val.D  := 07FFFFFFEH;
                   | Real :    val.R  := VAL(REAL, 07F7FFFFEH);
-                  | LongReal: 
-
-  WriteString("getting max of longreal"); WriteLn;
-                              val.D3 := 07FEFH;
+                  | LongReal: val.D3 := 07FEFH;
                               val.D2 := 0FFFFH;
                               val.D1 := 0FFFFH;
                               val.D0 := 0FFFEH;

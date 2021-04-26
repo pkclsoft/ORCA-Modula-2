@@ -2764,9 +2764,9 @@ BEGIN
 
   IF ShowProgress THEN
 (*  WriteString(processor); *)
-    WriteString("ORCA/Modula-2 1.1.0d3");
+    WriteString("ORCA/Modula-2 1.1.0d4");
     WriteLn;
-    WriteString("Copyright 1993, Peter Easdown");
+    WriteString("Copyright 2021, PKCLsoft, by Peter Easdown");
     WriteLn;
     WriteString("Published by Byte Works, Inc.");
     WriteLn;

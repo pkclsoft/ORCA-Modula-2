@@ -12,7 +12,7 @@ IMPLEMENTATION MODULE M2SM; (* NW 17.8.83 / 23.3.85; HS 31.5.86 / 28.4.89 *)
   FROM GSOSInterface IMPORT GSOSOutString, GSOSNameString, getNameDCB, 
     GetName, AccessSet, aaReadEnabled, StringToGSOSOutString;
   FROM InOut IMPORT WriteString, Write, WriteLn, WriteCard, WriteHex,
-    WriteLongInt, WriteLongReal;
+    WriteLongInt;
   FROM MemoryManager IMPORT Handle;
   FROM M2Debug IMPORT lineType, step, breakPoint, autoGo, breakPointCode, 
     autoGoCode;
@@ -413,12 +413,7 @@ VAR
           IF dig[j] > "9" THEN Mark(40) END;
           x := x * FLOATD(10) + FLOATD(ORD(dig[j]) - 60B);
           INC(l)
-        ELSE
-          Mark(41); 
-
-          WriteString("mark41 #1");
-          WriteLn;
-
+        ELSE Mark(41) 
         END;
         INC(j)
       END;
@@ -454,40 +449,17 @@ VAR
         END;
       ELSE
         IF e <= maxExp THEN
-          WriteString("mark41 #2 e = ");
-          WriteCard(e, 5);
-          WriteLn;
-
           f := Ten(e);
-
-          WriteString("mark41 #2 tst = ");
-          WriteLongReal(14.672984L, 20);
-          WriteLn;
-
-          WriteString("mark41 #2 f = ");
-          WriteLongReal(f, 20);
-          WriteLn;
-
-          WriteString("mark41 #2 max(longreal) = ");
-          WriteLongReal(MAX(LONGREAL), 20);
-          WriteLn;
   
-          (*IF f = 0.0L THEN
+          IF f = 0.0L THEN
             x := 0.0L;
-          ELS*) IF ABS(MAX(LONGREAL)) / f >= x THEN
+          ELSIF ABS(MAX(LONGREAL)) / f >= x THEN
             x := f*x;
           ELSE
             Mark(41);
-
-            WriteString("mark41 #2");
-            WriteLn;
-
           END;
         ELSE
           Mark(41);
-
-          WriteString("mark41 #3");
-          WriteLn;
         END;
       END;
       IF numtyp = 5 THEN
@@ -497,10 +469,6 @@ VAR
           realval := SHORT(x);
         ELSE
           Mark(41);
-        
-          WriteString("mark41 #4");
-          WriteLn;
-
           realval := FLOAT(1);
         END;
       END;

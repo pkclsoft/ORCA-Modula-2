@@ -1,5 +1,12 @@
-Changes in the Compiler
------------------------
+2021 v1.1d4 Changes in the Compiler and libraries
+-------------------------------------------------
+* Corrected the min and max values of REAL and LONGREAL types.
+
+* Attempt to trap a divide by zero when tokenizing a long real literal constant of 0.0.
+
+
+~2007 v1.1d3 Changes in the Compiler
+------------------------------------
 
 * Bug in the calculation of the number of elements in a set based upon an
   enumerated type has been fixed.

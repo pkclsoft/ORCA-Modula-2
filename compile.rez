@@ -684,14 +684,14 @@ resource rVersion(2, nospecialmemory) {
 resource rVersion(1, nospecialmemory) {
   {
     01,     /* major revision */
-    0,      /* minor revision */
+    1,      /* minor revision */
     0,      /* bug   version */
     development,   /* stage */
-    03      /* non-final release */
+    04      /* non-final release */
   },
   verAustralia,
   "ORCA/Modula-2",
-  "Copyright \$a9 2007 The Byteworks.  By Peter C. Easdown"
+  "Copyright \$a9 2021 The Byteworks, PKCLsoft.  By Peter C. Easdown"
 };
 
 resource rComment(2, nospecialmemory) {
