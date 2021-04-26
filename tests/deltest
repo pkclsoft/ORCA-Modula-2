@@ -19,3 +19,5 @@ rm test1
 rm test2
 rm test3
 rm datasize
+rm testinout
+rm testset
