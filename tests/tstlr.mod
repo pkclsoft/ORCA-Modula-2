@@ -1,24 +1,25 @@
 MODULE TestLR;
 
 FROM InOut IMPORT WriteString, WriteLn;
-FROM RealInOut IMPORT WriteLongReal, WriteLongRealOct;
+FROM RealInOut IMPORT WriteLongReal, WriteLongRealHEX;
 
 VAR
   rv:   LONGREAL;
   cnt:  CARDINAL;
 BEGIN
   WriteString('Max(LONGREAL) = ');
-  WriteLongReal(MAX(LONGREAL), 20);
+  WriteLongRealHEX(MAX(LONGREAL));
   WriteLn;
 
   WriteString('Min(LONGREAL) = ');
-  WriteLongReal(MIN(LONGREAL), 20);
+  WriteLongRealHEX(MIN(LONGREAL));
   WriteLn;
 
-  rv := MAX(LONGREAL) / 10.00001L;
+  rv := 1.5L;
 
   FOR cnt := 0 TO 17 DO
     WriteString('rv = ');
+    WriteLongRealHEX(rv);
     WriteLongReal(rv, 20);
     WriteLn;
 

@@ -1,6 +1,7 @@
 MODULE TestR;
 
-FROM InOut IMPORT WriteString, WriteLn, WriteFixPt;
+FROM InOut IMPORT WriteString, WriteLn, WriteFixPt, WriteReal, WriteRealHEX;
+FROM RealInOut IMPORT WriteLongRealHEX;
 FROM RealConversion IMPORT RealToString;
 VAR
   rv:   REAL;
@@ -16,19 +17,26 @@ BEGIN
   WriteFixPt(MIN(REAL), 20, 0);
   WriteLn;
 
-  RealToString(1.5, 20, 20, str, ok);
+(*  RealToString(1.5, 20, 20, str, ok);
 
   WriteString('MAX(REAL) = ');
   WriteString(str);
   WriteLn;
-
-  rv := 0.0;
+*)
+  rv := 1.5;
 
   FOR cnt := 0 TO 17 DO
     WriteString('rv = ');
-    WriteFixPt(rv, 20, 0);
+    WriteRealHEX(rv);
+    WriteReal(rv, 20);
+    (*WriteFixPt(rv, 20, 0);*)
     WriteLn;
 
     rv := rv + 0.012345;
   END;
+
+(*  WriteString('MAX(REAL) (hex) = ');
+  WriteLongRealHEX(LONGREAL(1.5));
+  WriteLn;
+*)
 END TestR.
