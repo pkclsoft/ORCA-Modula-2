@@ -217,6 +217,8 @@ PROCEDURE WriteFixPt(x: REAL; n, k: CARDINAL);
     If k is zero, then the numer is written in exponential format.
 *)
 
+PROCEDURE WriteRealHEX(x: REAL);
+
 PROCEDURE WriteLongFixPt(x: LONGREAL; n, k: CARDINAL);
 (*
   OPERATION:

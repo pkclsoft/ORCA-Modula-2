@@ -819,6 +819,24 @@ BEGIN
   WriteString(str);
 END WriteReal;
 
+PROCEDURE WriteRealHEX(x: REAL);
+  TYPE
+    Real = RECORD (* conversion from real to its two words *)
+             CASE :CARDINAL OF
+               0: R: REAL;
+             | 1: arr: ARRAY [0..1] OF CARDINAL;
+             END
+           END;
+
+  VAR
+    u: Real;
+BEGIN
+  u.R := x;
+  WriteHex(u.arr[0], 4); Write(" ");
+  WriteHex(u.arr[1], 4); Write(" ");
+  Done := TRUE;
+END WriteRealHEX;
+
 PROCEDURE WriteFixPt(x: REAL; n, k: CARDINAL);
 (*
   OPERATION:
