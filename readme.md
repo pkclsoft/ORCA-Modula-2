@@ -13,6 +13,10 @@ The general conditions that must be met before a change is released on master ar
 
 A complete distribution of the ORCA/M languages, including installers and documentation, is available from the Juiced GS store at https://juiced.gs/store/category/software/. It is distributed as part of the Opus ][ package.
 
+The other ORCA/M compilers, and libraries can be found on Github also at: https://github.com/byteworksinc
+
+My thanks to Mike Westerfield of The Byte Works Inc. for his support and help to bring Modula-2 to the IIGS, and to Jim Merritt and Tim Swihart (of Apple) for encouraging me at the time.
+
 ## Line Endings
 The text and source files in this repository originally used CR line endings, as usual for Apple II text files, but they have been converted to use LF line endings because that is the format expected by Git. If you wish to move them to a real or emulated Apple II and build them there, you will need to convert them back to CR line endings.
 
