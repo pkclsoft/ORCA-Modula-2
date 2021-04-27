@@ -1,0 +1,22 @@
+(*$NoImp*)
+DEFINITION MODULE SetConst;
+
+TYPE
+  small = (one, two, three, four, five, six, seven);
+  medium = (red, blue, green, yellow, white, black, brown, orange, purple, magenta);
+  big = (cat, dog, cow, pig, snake, rat, mouse, duck, horse, mule, monkey, man,
+         woman, alpaca, llama, sheep, lamb, insect);
+
+  asmallset = SET OF small;
+  amediumset = SET OF medium;
+  abigset = SET OF big;
+
+  acharset = SET OF CHAR;
+
+CONST
+  testconstsmall = asmallset{two, six};
+  testconstmedium = amediumset{blue, black, magenta, yellow..white};
+  testconstbig = abigset{cat..mouse, mule, sheep, lamb};
+  testconstcharset = acharset{'!', '&', '*', '?', '=', '0'..'9'};
+
+END SetConst.

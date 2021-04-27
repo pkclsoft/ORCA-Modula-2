@@ -7,6 +7,9 @@ IMPLEMENTATION MODULE RealInOut;
   FROM RealConversions IMPORT
     LongRealToString, StringToLongReal;
 
+  FROM M2Lib IMPORT
+    FormatLongReal;
+
   FROM ASCII IMPORT
     esc, can;
 
@@ -48,7 +51,8 @@ IMPLEMENTATION MODULE RealInOut;
     END;
 
     digits := - INTEGER(length - minLength);
-    LongRealToString(r, digits, length, str, Done);
+    (*LongRealToString(r, digits, length, str, Done);*)
+    FormatLongReal(r, digits, length, str);
 
     IF NOT Done THEN
       IF length >  badMessLength THEN

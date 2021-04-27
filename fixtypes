@@ -4,3 +4,4 @@ filetype =.rez src 21
 filetype build src 6
 filetype def src 6
 filetype mod src 6
+filetype obj/l2bw= src 6

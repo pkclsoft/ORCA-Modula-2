@@ -1,8 +1,13 @@
 DEFINITION MODULE M2Clock;  (* W. Heiz, 23-Dec-85 / 23-Dec-85 *)
-  TYPE    KeyTime = RECORD
+
+  TYPE
+    KeyTime = RECORD
                 day:         CARDINAL; (* ((year-1900)*20B + month)*40B + day *)
                 minute:      CARDINAL; (* hour*60 + minute *)
                 millisecond: CARDINAL; (* second*1000 + millisecond *)
               END;
+
   PROCEDURE GetKeyTime(VAR t: KeyTime);
+
 END M2Clock.
+ 

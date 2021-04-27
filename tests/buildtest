@@ -1,0 +1,35 @@
+asm test.def
+asm setconst.def
+asm pascalls.def
+asm testlocals2.def
+
+asml +E +T tstdiv4.mod keep=$
+asml +E +T tstmod2.mod keep=$
+asml +E +T tstmod4.mod keep=$
+asml +E +T tstmul2.mod keep=$
+asml +E +T tstmul4.mod keep=$
+asml +E +T tstudiv2.mod keep=$
+asml +E +T tstudiv4.mod keep=$
+asml +E +T tstumod2.mod keep=$
+asml +E +T tstumod4.mod keep=$
+asml +E +T tstumul2.mod keep=$
+asml +E +T tstumul4.mod keep=$
+asml +E +T tstdiv2.mod keep=$
+asml +E +T testset.mod keep=$
+asml +E +T testinout.mod keep=$
+asm pascalls.pas keep=$
+asm +E +T m2cp.mod
+link m2cp pascalls keep=m2cp
+asml +E +T c641.mod keep=$
+asml +E +T c811.mod keep=$
+asml +E +T c8211.mod keep=$
+asml +E +T c301.mod keep=$
+asm +E +T testlocals2.mod keep=$
+asm +E +T testlocals.mod keep=$
+link testlocals testlocals2 keep=testlocals
+asml +E +T test1.mod keep=$
+asml +E +T test2.mod keep=$
+asml +E +T test3.mod keep=$
+asml +E +T datasize.mod keep=$
+rm =.a =.root =.int =.ref =.sym
+

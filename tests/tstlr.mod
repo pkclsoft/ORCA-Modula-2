@@ -1,7 +1,7 @@
 MODULE TestLR;
 
-FROM InOut IMPORT WriteString, WriteLn;
-FROM RealInOut IMPORT WriteLongReal, WriteLongRealHEX;
+FROM InOut IMPORT WriteString, WriteLn, WriteLongReal;
+FROM RealInOut IMPORT WriteLongRealHEX;
 
 VAR
   rv:   LONGREAL;

@@ -1,0 +1,13 @@
+DEFINITION MODULE Test;
+
+TYPE
+  atype = RECORD
+            afield: CARDINAL;
+            bfield: CARDINAL;
+          END;
+
+VAR
+  avar: atype;
+  bvar: atype;
+
+END Test.

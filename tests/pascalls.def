@@ -1,0 +1,74 @@
+(*$NoImp*)
+DEFINITION MODULE PasCalls;
+
+FROM SYSTEM IMPORT BYTE;
+
+CONST
+  lowarr      = 0;
+  smlhigharr  = 1;
+  lrghigharr  = 5;
+
+TYPE
+  smlarrtyp = ARRAY [lowarr..smlhigharr] OF INTEGER;
+  lrgarrtyp = ARRAY [lowarr..lrghigharr] OF INTEGER;
+
+  smlrectyp = RECORD
+                a:  INTEGER;
+                b:  BOOLEAN;
+              END;
+
+  lrgrectyp = RECORD
+                a:  INTEGER;
+                b:  BOOLEAN;
+                c:  LONGINT;
+              END;
+
+(*$Pascal+*)
+PROCEDURE nonvars(b:  BYTE;
+                  c:  CHAR;
+                  i:  INTEGER;
+                  bo: BOOLEAN;
+                  l:  LONGINT;
+                  r:  REAL;
+                  db: LONGREAL);
+
+PROCEDURE vars(VAR b:  BYTE;
+               VAR c:  CHAR;
+               VAR i:  INTEGER;
+               VAR bo: BOOLEAN;
+               VAR l:  LONGINT;
+               VAR r:  REAL;
+               VAR db: LONGREAL);
+
+PROCEDURE smlnonvararr(arr: smlarrtyp);
+
+PROCEDURE smlvararr(VAR arr: smlarrtyp);
+
+PROCEDURE lrgnonvararr(arr: lrgarrtyp);
+
+PROCEDURE lrgvararr(VAR arr: lrgarrtyp);
+
+PROCEDURE smlnonvarrec(rec: smlrectyp);
+
+PROCEDURE smlvarrec(VAR rec: smlrectyp);
+
+PROCEDURE lrgnonvarrec(rec: lrgrectyp);
+
+PROCEDURE lrgvarrec(VAR rec: lrgrectyp);
+
+PROCEDURE incbyte(b: BYTE): BYTE;
+
+PROCEDURE incchar(c: CHAR): CHAR;
+
+PROCEDURE incint(i: INTEGER): INTEGER;
+
+PROCEDURE inclint(li: LONGINT): LONGINT;
+
+PROCEDURE notbool(bo: BOOLEAN): BOOLEAN;
+
+PROCEDURE add10toreal(r: REAL): REAL;
+
+PROCEDURE add102tolrl(lr: LONGREAL): LONGREAL;
+(*$Pascal-*)
+
+END PasCalls.
