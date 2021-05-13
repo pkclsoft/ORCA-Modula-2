@@ -71,6 +71,7 @@ asm def/lists.def
 asm def/listutility.def
 asm def/ezstrings.def
 asm def/superread.def
+asm def/cdaconsole.def
 
 delete obj/=.a obj/=.root
 
@@ -95,7 +96,7 @@ asm mod/lists.mod       keep=obj/$
 asm mod/listutility.mod keep=obj/$
 asm mod/ezstrings.mod   keep=obj/$
 asm mod/superread.mod   keep=obj/$
-
+asm mod/cdaconsole.mod  keep=obj/$
 asm asm/mathlib.asm     keep=obj/$
 asm asm/mathlib0.asm    keep=obj/$
 asm asm/longmath.asm    keep=obj/$
