@@ -1,5 +1,6 @@
 IMPLEMENTATION MODULE CDAConsole;
 
+IMPORT ASCII;
 FROM Terminal IMPORT AssignWrite, AssignRead;
 
 (*$Pascal+*)
@@ -19,12 +20,14 @@ BEGIN
   CDWrite(ch);
 END CDAWrite;
 
-PROCEDURE CDARead(VAR ch: CHAR);
+PROCEDURE CDARead(VAR ch: CHAR; VAR done: BOOLEAN);
 BEGIN
   IF CDCharacterPresent() THEN
     CDRead(ch);
+    done := TRUE;
   ELSE
     ch := ASCII.nul;
+    done := FALSE;
   END;
 END CDARead;
 
