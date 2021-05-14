@@ -1706,16 +1706,16 @@ M2Lib__Terminated   ENTRY
                     DC      H'00 00'
 
 M2Lib__QuitParms    ENTRY
-M2Lib__quitPCount   DC      H'00 00'
-M2Lib__quitPath     DC      H'00 00 00 00'
-M2Lib__quitFlags    DC      H'40 00'
+M2Lib__quitPCount   DC      I2'2'
+M2Lib__quitPath     DC      I4'0'
+M2Lib__quitFlags    DC      I2'$4000'
 
 M2Lib__CloseParms   ENTRY
-                    DC      H'00 01'        ;pcount = 1
-                    DC      H'00 00'        ;refNum = 0, close all files
+                    DC      I2'1'           ;pcount = 1
+                    DC      I2'0'           ;refNum = 0, close all files
 
 M2Lib__SetLInfoDCB  ENTRY
-                    DC      H'00 0B'        ;pcount = 11
+                    DC      I2'11'          ;pcount = 11
                     DC      H'00 00 00 00'  ;sfile = NIL
                     DC      H'00 00 00 00'  ;dfile = NIL
                     DC      H'00 00 00 00'  ;parms = NIL

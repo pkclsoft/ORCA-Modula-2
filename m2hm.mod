@@ -4700,7 +4700,7 @@ BEGIN
     AddBytesToObjectFile(3);
     GenGlobalOp(PEA, 'M2Lib__CloseParms', 0, 0, 2);
     AddBytesToObjectFile(3);
-    PutDPReference(PEA, 2024H, 3);
+    PutDPReference(PEA, 2014H, 3);
     PutLongReference(JSL, 0E100B0H, 4);
 
     GenGlobalOp(LDA+ABSLONG, '~USER_ID', 0, 0, 3);
