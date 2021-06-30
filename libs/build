@@ -1,105 +1,109 @@
 unset exit
 exists 13/m2defs
 if {status} == 0
-mkdir 13/m2defs
+create 13/m2defs
 end
 
 unset exit
 exists obj
 if {status} == 0
-mkdir obj
+create obj
 end
 
 delete 13/m2defs/=.sym
 delete =.sym
 delete =.ref
 
-asm def/charset.def
-asm def/memorymanag.def
-asm def/common.def
-asm def/ascii.def
-asm def/consoleio.def
-asm def/ezcommandli.def
-asm def/gsbug.def
-asm def/gsosinterfa.def
-asm def/filesystem.def
-asm def/ezfilesyste.def
-asm def/inout.def
-asm def/integermath.def
-asm def/m2lib.def modula2=(-k) > m2lib.key
-asm def/ezdump.def
-asm def/notesynthes.def
-asm def/numberconve.def
-asm def/realconvers.def
-asm def/realinout.def
-asm def/scheduler.def
-asm def/soundmanage.def
-asm def/ezstorage.def
-asm def/storage.def modula2=(-k) > storage.key
-asm def/strings.def
-asm def/terminal.def
-asm def/w65c816.def
-asm def/ace.def
-asm def/loader.def
-asm def/notesequenc.def
-asm def/orcashell.def
-asm def/resourceman.def
-asm def/fastfilesys.def
-asm def/texttools.def
-asm def/midi.def
-asm def/misctoolset.def
-asm def/toollocator.def
-asm def/fontmanager.def
-asm def/quickdrawii.def
-asm def/scrapmanage.def
-asm def/printmanage.def
-asm def/eventmanage.def
-asm def/deskmanager.def
-asm def/lineedit.def
-asm def/windowmanag.def
-asm def/listmanager.def
-asm def/textedit.def
-asm def/controlmana.def
-asm def/dialogmanag.def
-asm def/menumanager.def
-asm def/standardfil.def
-asm def/eztools.def
-asm def/ezpaths.def
-asm def/mathlib0.def
-asm def/longmath.def
-asm def/lists.def
-asm def/listutility.def
-asm def/ezstrings.def
-asm def/superread.def
-asm def/cdaconsole.def
+assemble def/charset.def
+assemble def/memorymanag.def
+assemble def/common.def
+assemble def/ascii.def
+assemble def/consoleio.def
+assemble def/ezcommandli.def
+assemble def/gsbug.def
+assemble def/gsosinterfa.def
+assemble def/filesystem.def
+assemble def/ezfilesyste.def
+assemble def/inout.def
+assemble def/integermath.def
+assemble def/m2lib.def modula2=(-k) > m2lib.key
+assemble def/ezdump.def
+assemble def/notesynthes.def
+assemble def/numberconve.def
+assemble def/realconvers.def
+assemble def/realinout.def
+assemble def/scheduler.def
+assemble def/soundmanage.def
+assemble def/ezstorage.def
+assemble def/storage.def modula2=(-k) > storage.key
+assemble def/strings.def
+assemble def/terminal.def
+assemble def/w65c816.def
+assemble def/ace.def
+assemble def/loader.def
+assemble def/notesequenc.def
+assemble def/orcashell.def
+assemble def/resourceman.def
+assemble def/fastfilesys.def
+assemble def/texttools.def
+assemble def/midi.def
+assemble def/misctoolset.def
+assemble def/toollocator.def
+assemble def/fontmanager.def
+assemble def/quickdrawii.def
+assemble def/scrapmanage.def
+assemble def/printmanage.def
+assemble def/eventmanage.def
+assemble def/deskmanager.def
+assemble def/lineedit.def
+assemble def/windowmanag.def
+assemble def/listmanager.def
+assemble def/textedit.def
+assemble def/controlmana.def
+assemble def/dialogmanag.def
+assemble def/menumanager.def
+assemble def/standardfil.def
+assemble def/eztools.def
+assemble def/ezpaths.def
+assemble def/mathlib0.def
+assemble def/longmath.def
+assemble def/lists.def
+assemble def/listutility.def
+assemble def/ezstrings.def
+assemble def/superread.def
+assemble def/cdaconsole.def
+assemble def/ezcontrols.def
+assemble def/ezlineedit.def
 
 delete obj/=.a obj/=.root
 
-asm mod/common.mod      keep=obj/$
-asm mod/ezstorage.mod   keep=obj/$
-asm mod/strings.mod     keep=obj/$
-asm mod/gsosinterfa.mod keep=obj/$
-asm mod/consoleio.mod   keep=obj/$
-asm mod/terminal.mod    keep=obj/$
-asm mod/filesystem.mod  keep=obj/$
-asm mod/ezfilesyste.mod keep=obj/$
-asm mod/inout.mod       keep=obj/$
-asm mod/ezdump.mod      keep=obj/$
-asm mod/numberconve.mod keep=obj/$
-asm mod/fastfilesys.mod keep=obj/$
-asm mod/ezcommandli.mod keep=obj/$
-asm mod/realconvers.mod keep=obj/$
-asm mod/realinout.mod   keep=obj/$
-asm mod/eztools.mod     keep=obj/$
-asm mod/ezpaths.mod     keep=obj/$
-asm mod/lists.mod       keep=obj/$
-asm mod/listutility.mod keep=obj/$
-asm mod/ezstrings.mod   keep=obj/$
-asm mod/superread.mod   keep=obj/$
-asm mod/cdaconsole.mod  keep=obj/$
-asm asm/mathlib.asm     keep=obj/$
-asm asm/mathlib0.asm    keep=obj/$
-asm asm/longmath.asm    keep=obj/$
+assemble mod/common.mod      keep=obj/$
+assemble mod/ezstorage.mod   keep=obj/$
+assemble mod/strings.mod     keep=obj/$
+assemble mod/gsosinterfa.mod keep=obj/$
+assemble mod/consoleio.mod   keep=obj/$
+assemble mod/terminal.mod    keep=obj/$
+assemble mod/filesystem.mod  keep=obj/$
+assemble mod/ezfilesyste.mod keep=obj/$
+assemble mod/inout.mod       keep=obj/$
+assemble mod/ezdump.mod      keep=obj/$
+assemble mod/numberconve.mod keep=obj/$
+assemble mod/fastfilesys.mod keep=obj/$
+assemble mod/ezcommandli.mod keep=obj/$
+assemble mod/realconvers.mod keep=obj/$
+assemble mod/realinout.mod   keep=obj/$
+assemble mod/eztools.mod     keep=obj/$
+assemble mod/ezpaths.mod     keep=obj/$
+assemble mod/lists.mod       keep=obj/$
+assemble mod/listutility.mod keep=obj/$
+assemble mod/ezstrings.mod   keep=obj/$
+assemble mod/superread.mod   keep=obj/$
+assemble mod/cdaconsole.mod  keep=obj/$
+assemble mod/ezcontrols.mod  keep=obj/$
+assemble mod/ezlineedit.mod  keep=obj/$
+assemble asm/mathlib.asm     keep=obj/$
+assemble asm/mathlib0.asm    keep=obj/$
+assemble asm/longmath.asm    keep=obj/$
 
 echo "Now update the key of M2Lib.ASM and Storage.ASM, and execute build2."
 echo "To do this, back in a macOS terminal window, execute the fixasmkeys.sh"

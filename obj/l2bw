@@ -1,2 +1,2 @@
-link compile m2cm m2clock m2omf m2debug m2dm m2em m2fm m2hm m2lm m2rm m2sm m2tm m2shell m2sets keep=m2c
-asm compile.rez keep=m2c rez=(-i 13/rinclude)
+link compile m2cm m2clock m2omf m2debug m2dm m2em m2fm m2hm m2lm m2rm m2sm m2tm m2shell m2sets 13/m2lib 13/syslib 13/sysfloat keep=m2c
+assemble compile.rez keep=m2c rez=(-i 13/rinclude)

@@ -1,5 +1,5 @@
-filetype =.def src 16
-filetype =.mod src 16
+filetype =.def src 272
+filetype =.mod src 272
 filetype =.rez src 21
 filetype builditest src 6
 filetype runtest src 6

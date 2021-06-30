@@ -1,7 +1,9 @@
 copy -C =.macros asm
 
-asm asm/m2lib.asm keep=obj/$
-asm asm/storage.asm keep=obj/$
+assemble asm/m2lib.asm keep=obj/$
+assemble asm/storage.asm keep=obj/$
+
+delete m2lib
 
 buildlib
 
