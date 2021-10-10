@@ -1,0 +1,9 @@
+*.def filter=crtext
+*.mod filter=crtext
+build* filter=crtext
+fixtypes filter=crtext
+mod filter=crtext
+def filter=crtext
+*.rez filter=crtext
+*.asm filter=crtext
+*.macros filter=crtext
