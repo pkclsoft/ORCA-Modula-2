@@ -8,3 +8,4 @@ def filter=crtext
 *.asm filter=crtext
 *.macros filter=crtext
 *.sed filter=crtext
+fixasmkeys filter=crtext
