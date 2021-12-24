@@ -105,9 +105,42 @@ assemble asm/mathlib.asm     keep=obj/$
 assemble asm/mathlib0.asm    keep=obj/$
 assemble asm/longmath.asm    keep=obj/$
 
-echo "Now updating the keys of M2Lib.ASM and Storage.ASM, and will then"
-echo "execute build2."
+set toolmissing 0
+unset exit
+exists 17/assign
+if {status} == 0
+echo "assign tool is missing. In order to automate the build entirely, install the assign tool,"
+echo "which can be retrieved and built from: https://github.com/pkclsoft/assign"
+echo ""
+set toolmissing 1
+end
 
-fixasmkeys
+exists 17/grep
+if {status} == 0
+echo "grep tool is missing. In order to automate the build entirely, install the assign tool,"
+echo "which can be retrieved and built from: https://github.com/pkclsoft/gsgrep"
+echo ""
+set toolmissing 1
+end
 
-build2
+exists 17/minised
+if {status} == 0
+echo "minised tool is missing. In order to automate the build entirely, install the assign tool,"
+echo "which can be retrieved and built from: https://github.com/pkclsoft/minised"
+echo ""
+set toolmissing 1
+end
+
+if {toolmissing} == 0
+  echo "Now updating the keys of M2Lib.ASM and Storage.ASM, and will then"
+  echo "execute build2."
+  echo ""
+
+  fixasmkeys
+
+  build2
+else
+  echo "Now update the key of M2Lib.ASM and Storage.ASM, and execute build2."
+  echo "To do this, back in a macOS terminal window, execute the fixasmkeys.sh"
+  echo "script."
+end

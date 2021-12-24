@@ -7,3 +7,4 @@ def filter=crtext
 *.rez filter=crtext
 *.asm filter=crtext
 *.macros filter=crtext
+*.sed filter=crtext
