@@ -1,7 +1,10 @@
-filetype def/=.def src 272
-filetype mod/=.mod src 272
+filetype def/=.def src 16
+filetype mod/=.mod src 16
 filetype asm/=.asm src 3
 filetype =.macros src 3
 filetype build src 6
 filetype build2 src 6
 filetype buildlib src 6
+filetype =.sed src
+filetype fixasmkeys src 6
+

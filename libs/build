@@ -105,6 +105,9 @@ assemble asm/mathlib.asm     keep=obj/$
 assemble asm/mathlib0.asm    keep=obj/$
 assemble asm/longmath.asm    keep=obj/$
 
-echo "Now update the key of M2Lib.ASM and Storage.ASM, and execute build2."
-echo "To do this, back in a macOS terminal window, execute the fixasmkeys.sh"
-echo "script."
+echo "Now updating the keys of M2Lib.ASM and Storage.ASM, and will then"
+echo "execute build2."
+
+fixasmkeys
+
+build2
