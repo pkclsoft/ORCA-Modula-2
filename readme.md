@@ -60,11 +60,21 @@ There are two main steps to building the compiler:
 ### 1. Build the libraries
 The compiler depends upon a number of libraries.  The shipped application came with `m2lib` and it's associated DEF and SYM files.  To build the compiler, you need access to these from the released compiler (available via [Juiced GS](https://juiced.gs/store/category/software/)), or you need the ability to recompile them.  The full source to these libraries is located within the `libs` folder.
 
-1. Within this folder, in the ORCA/M shell, after running the `libs/fixtypes` script, execute the `libs/build` script.  That will compile all of the Modula-2 code that makes up the library.
+There are two stages to the building of the library.  The first compiles all of the Modula-2 code.  The second compiles the assembler components of the library.  Between the two phases, two assembly files, m2lib.asm and storage.asm need to be updated so that they align with the compiled Modula-2 code.
 
-2. When this is complete, you'll be instructed to, on a macOS machine (typically), within the same folder (which is possible via the excellent [Host FST](https://github.com/ksherlock/host-fst)), execute the zsh script called `libs/fixasmkeys.sh`.  This script will update the `libs/asm/m2lib.asm` and `libs/asm/storage.asm` files so that they are aligned with the `libs/def/m2lib.def` and `libs/def/storage.def` definition files that were compiled in step 1.
+If you have installed the following three utilities into your ORCA environment, then the script that executes the first phase also automatically does this alignment and triggers the second phase.
 
-3. With that command executed, you should now run the `libs/build2` script within the ORCA/M shell.
+* gsgrep, located at [gsgrep](https://github.com/pkclsoft/gsgrep) (AppleIIGS branch)
+* minised, located at [minised](https://github.com/pkclsoft/minised) (AppleIIGS branch)
+* assign, located at [assign](https://github.com/pkclsoft/assign)
+
+If you don't have these tools installed, then the first `build` script will advise you to do the alignment yourself, and to start the second phase manually.
+
+1. Within this folder, in the ORCA/M shell, after running the `libs/fixtypes` script, execute the `libs/build` script; this initiates the first phase.  That will compile all of the Modula-2 code that makes up the library.
+
+2. When this is complete, if you don't have the above three tools installed, you'll be instructed to, on a macOS machine (typically), within the same folder (which is possible via the excellent [Host FST](https://github.com/ksherlock/host-fst)), execute the zsh script called `libs/fixasmkeys.sh`.  This script will update the `libs/asm/m2lib.asm` and `libs/asm/storage.asm` files so that they are aligned with the `libs/def/m2lib.def` and `libs/def/storage.def` definition files that were compiled in step 1.
+
+3. With that command executed; again, only if the above three tools are not installed, you should now run the `libs/build2` script within the ORCA/M shell.
 
 4. At the end of that script, the newly built `m2lib` will be moved to 13/ along with all of the generated SYM files so that when you next compile a Modula-2 source file, those newly compiled libraries will be referenced.  If you're making changes to the compiler that depend on changes in these libraries, this will all be needed.
 
