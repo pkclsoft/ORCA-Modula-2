@@ -112,10 +112,16 @@ BEGIN
   END;
 *)
   IF typ^.form IN sStrForm{Bool, Char, Card, Int, Enum, LCard, Double, Range,
-                           Real, LongReal, String} THEN
+                           Real, LongReal, String, Record} THEN
     RETURN TRUE;
-  ELSIF typ^.form IN sStrForm{Array, Pointer} THEN
+  ELSIF typ^.form = Array THEN
     RETURN BaseOK(typ^.ElemTyp);
+  ELSIF typ^.form = Pointer THEN
+    IF typ^.PBaseTyp^.form = Undef THEN
+      RETURN TRUE;
+    ELSE
+      RETURN BaseOK(typ^.PBaseTyp);
+    END;
   ELSE
     RETURN FALSE;
   END;
@@ -133,7 +139,7 @@ BEGIN
     CASE typ^.form OF
       Bool:
         type := 09H;
-    | Char:
+    | Char, Undef:
         type := 08H;
     | Card:
         type := 41H;
