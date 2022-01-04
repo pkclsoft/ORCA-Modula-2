@@ -146,9 +146,30 @@ Details:  EZStartGraph does not remap text I/O to the graphics screen.
 ------------------------------------------------------------------------------
 Bug:      016
 File:     
-Status:   Not fixed.
+Status:   Fixed.
 
 Details:  M2Debug has a problem with recursive records.
+
+          This:
+          
+          arec = RECORD
+            next:  POINTER TO arec;
+          END;
+          
+          caused a problem for me since next has an undefined type and is skipped. Since it's the last field in the record and it's
+          skipped, the record doesn't have an end-of-field marker which causes problems.
+          
+          (Trying to access next will cause a compiler error because it's undefined so I guess that isn't supported in Modula/2).
+          
+          Something like this worked as expected.
+          
+          arecPtr = POINTER TO arec;
+          arec = RECORD
+            next:  arecPtr;
+          END;
+          
+          Undefined pointers are now treated as POINTER TO CHAR for debug record generation purposes. This is consistent with how
+          function pointers are treated. (ORCA/C generates void * and function pointers as a POINTER TO INTEGER)
 
 ------------------------------------------------------------------------------
 
